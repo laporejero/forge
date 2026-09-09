@@ -1,0 +1,24 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.Session = exports.Record = exports.Field = exports.Database = exports.User = void 0;
+const user_1 = __importDefault(require("./user"));
+exports.User = user_1.default;
+const database_1 = __importDefault(require("./database"));
+exports.Database = database_1.default;
+const field_1 = __importDefault(require("./field"));
+exports.Field = field_1.default;
+const record_1 = __importDefault(require("./record"));
+exports.Record = record_1.default;
+const session_1 = __importDefault(require("./session"));
+exports.Session = session_1.default;
+user_1.default.hasMany(database_1.default);
+database_1.default.belongsTo(user_1.default);
+user_1.default.hasMany(session_1.default);
+session_1.default.belongsTo(user_1.default);
+database_1.default.hasMany(field_1.default);
+field_1.default.belongsTo(database_1.default);
+database_1.default.hasMany(record_1.default);
+record_1.default.belongsTo(database_1.default);
