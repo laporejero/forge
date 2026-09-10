@@ -1,12 +1,22 @@
 import { Router, Request, Response, NextFunction } from 'express'
 import bcrypt from 'bcrypt'
-import { User } from '../models'
+import { Database, User } from '../models'
 
 const router = Router()
 
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const users = await User.findAll()
+        const users = await User.findAll({
+            include: {
+                model: Database,
+                attributes: {
+                    exclude: ['userId']
+                }
+            },
+            attributes: {
+                exclude: ['passwordHash']
+            }
+        })
         res.json(users)
     } catch (error) {
         next(error)
