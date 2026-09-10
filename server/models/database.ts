@@ -1,7 +1,12 @@
-import { Model, DataTypes } from 'sequelize'
+import { Model, DataTypes, ForeignKey, CreationOptional } from 'sequelize'
 import { sequelize } from '../util/db'
+import User from './user'
 
-class Database extends Model {}
+class Database extends Model {
+    declare id: CreationOptional<number>
+    declare name: string
+    declare userId: ForeignKey<User['id']>
+}
 
 Database.init({
     id: {
