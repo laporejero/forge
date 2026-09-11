@@ -16,7 +16,10 @@ User.init({
     },
     email: {
         type: DataTypes.STRING,
-        unique: true,
+        unique: {
+            name: 'unique_email',
+            msg: 'An account with this email already exists'
+        },
         allowNull: false,
         validate: {
             notEmpty: {
@@ -34,7 +37,10 @@ User.init({
             notEmpty: {
                 msg: 'Name is required'
             },
-            len: [8, 20],
+            len: {
+                args: [2, 30],
+                msg: 'Name must be between 2 and 30 characters'
+            },
         }
     },
     passwordHash: {
