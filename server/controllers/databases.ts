@@ -49,7 +49,7 @@ router.get('/:id', tokenExtractor, async (req: Request<{ id: string }>, res: Res
         const id = Number(req.params.id)
         const userId = req.decodedToken!.id
 
-        if (Number.isNaN(id)) {
+        if (Number.isNaN(id) || id <= 0) {
             return res.status(400).json({
                 error: 'invalid database ID'
             })
@@ -84,7 +84,7 @@ router.put('/:id', tokenExtractor, async (req: Request<{ id: string }>, res: Res
         const id = Number(req.params.id)
         const userId = req.decodedToken!.id
 
-        if (Number.isNaN(id)) {
+        if (Number.isNaN(id) || id <= 0) {
             return res.status(400).json({
                 error: 'invalid database ID'
             })
@@ -126,7 +126,7 @@ router.delete('/:id', tokenExtractor, async (req: Request<{ id: string }>, res: 
         const id = Number(req.params.id)
         const userId = req.decodedToken!.id
 
-        if (Number.isNaN(id)) {
+        if (Number.isNaN(id) || id <= 0) {
             return res.status(400).json({
                 error: 'invalid database ID'
             })

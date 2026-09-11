@@ -11,6 +11,17 @@ const router = Router()
 router.post('/', async (request: Request, response: Response) => {
     const { email, password } = request.body
 
+    if (
+        typeof email !== 'string' || 
+        typeof password !== 'string' || 
+        !email.trim() || 
+        !password
+    ) {
+        return response.status(400).json({
+            error: 'email and password are required'
+        })
+    }
+
     const user = await User.findOne({
         where: { email }
     })
