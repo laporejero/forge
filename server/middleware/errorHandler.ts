@@ -1,16 +1,17 @@
 import { Request, Response, NextFunction } from 'express'
+import { UniqueConstraintError, ValidationError } from 'sequelize'
 
 const errorHandler = (error: unknown, req: Request, res: Response, next: NextFunction) => {
     if (error instanceof Error) {
-        if (error.name === 'SequelizeValidationError') {
-            return res.status(400).json({
-                error: error.message
+        if (error instanceof UniqueConstraintError) {
+            return res.status(409).json({
+                error: error.errors[0].message
             })
         }
 
-        if (error.name === 'SequelizeUniqueConstraintError') {
-            return res.status(409).json({
-                error: 'Resource already exists'
+        if (error instanceof ValidationError) {
+            return res.status(400).json({
+                error: error.errors[0].message
             })
         }
     }
