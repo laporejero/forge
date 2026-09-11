@@ -17,6 +17,15 @@ Database.init({
     name: {
         type: DataTypes.STRING,
         allowNull: false,
+        validate: {
+            notEmpty: {
+                msg: 'Database name is required'
+            },
+            len: {
+                args: [1, 30],
+                msg: 'Database name should be 30 characters of less'
+            }
+        }
     },
     userId: {
         type: DataTypes.INTEGER,
@@ -27,7 +36,12 @@ Database.init({
     sequelize,
     underscored: true,
     timestamps: false,
-    modelName: 'database'
+    modelName: 'database',
+    indexes: [{
+        unique: true,
+        fields: ['user_id', 'name'],
+        name: 'unique_database_name_per_user'
+    }]
 })
 
 export default Database
