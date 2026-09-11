@@ -15,8 +15,8 @@ app.use('/api/users', usersRouter)
 app.use('/api/login', loginRouter)
 app.use('/api/databases', databasesRouter)
 
-app.use(errorHandler)
 app.use(unknownEndpoint)
+app.use(errorHandler)
 
 const start = async (): Promise<void> => {
     await connectToDatabase()
