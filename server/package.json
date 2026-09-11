@@ -8,7 +8,8 @@
     "start": "node dist/index.js",
     "dev": "tsx index.ts",
     "dev:watch": "tsx watch index.ts",
-    "dev:test": "cross-env TESTING=true tsx index.ts",
+    "test": "cross-env TESTING=true vitest run",
+    "test:watch": "cross-env TESTING=true vitest",
     "migration:down": "tsx util/rollback.ts"
   },
   "keywords": [],
@@ -30,9 +31,12 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^26.5.0",
     "@types/pg": "^8.23.1",
+    "@types/supertest": "^7.2.1",
     "cross-env": "^10.1.0",
+    "supertest": "^7.2.2",
     "ts-node": "^10.9.2",
     "tsx": "^4.23.13",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.0"
   }
 }
