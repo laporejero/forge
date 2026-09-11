@@ -27,7 +27,14 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { name, email, password } = req.body
 
-        if (!name || !email || !password) {
+        if (
+            typeof name !== 'string' ||
+            typeof email !== 'string' ||
+            typeof password !== 'string' ||
+            !name.trim() ||
+            !email.trim() ||
+            !password
+        ) {
             return res.status(400).json({
                 error: 'name, email and password are required'
             })
@@ -39,15 +46,22 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
             })
         }
 
+        const normalizedName = name.trim()
+        const normalizedEmail = email.trim().toLowerCase()
+
         const passwordHash = await bcrypt.hash(password, 10)
 
         const user = await User.create({
-            name,
-            email,
+            name: normalizedName,
+            email: normalizedEmail,
             passwordHash
         })
 
-        res.json(user)
+        return res.status(201).json({
+            id: user.id,
+            name: user.name,
+            email: user.email
+        })
     } catch (error) {
         next(error)
     }
