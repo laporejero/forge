@@ -1,10 +1,16 @@
 import { Router, Request, Response, NextFunction } from 'express'
 import bcrypt from 'bcrypt'
+import  { z } from 'zod'
+
 import { Database, User } from '../models'
+import validateBody from '../middleware/validateBody'
+import { newUserSchema } from '../schemas/user'
+
+type NewUserInput = z.infer<typeof newUserSchema>
 
 const router = Router()
 
-router.get('/', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/', async (req: Request, res: Response) => {
     const users = await User.findAll({
         include: {
             model: Database,
@@ -19,35 +25,21 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     res.json(users)
 })
 
-router.post('/', async (req: Request, res: Response, next: NextFunction) => {
+router.post(
+    '/', 
+    validateBody(newUserSchema), 
+    async (
+        req: Request<{}, {}, NewUserInput>, 
+        res: Response
+    ) => {
     const { name, email, password } = req.body
 
-    if (
-        typeof name !== 'string' ||
-        typeof email !== 'string' ||
-        typeof password !== 'string' ||
-        !name.trim() ||
-        !email.trim() ||
-        !password
-    ) {
-        return res.status(400).json({
-            error: 'name, email and password are required'
-        })
-    }
-
-    if (password.length < 8) {
-        return res.status(400).json({
-            error: 'password must be at least 8 characters'
-        })
-    }
-
-    const normalizedName = name.trim()
     const normalizedEmail = email.trim().toLowerCase()
 
     const passwordHash = await bcrypt.hash(password, 10)
 
     const user = await User.create({
-        name: normalizedName,
+        name,
         email: normalizedEmail,
         passwordHash
     })
