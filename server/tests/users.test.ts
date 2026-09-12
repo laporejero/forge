@@ -2,7 +2,7 @@ import request from 'supertest'
 import { beforeEach, describe, test, expect, beforeAll, afterAll } from 'vitest'
 
 import app from '../app'
-import { User } from '../models'
+import { User, Session } from '../models'
 import { connectToDatabase, sequelize } from '../util/db'
 
 const api = request(app)
@@ -12,6 +12,10 @@ beforeAll(async () => {
 })
 
 beforeEach(async () => {
+    await Session.destroy({
+        where: {}
+    })
+
     await User.destroy({
         where: {}
     })
