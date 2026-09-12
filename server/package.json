@@ -23,7 +23,8 @@
     "jsonwebtoken": "^9.0.3",
     "pg": "^8.23.0",
     "sequelize": "^6.37.8",
-    "umzug": "^3.8.3"
+    "umzug": "^3.8.3",
+    "zod": "^4.6.2"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
