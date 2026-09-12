@@ -32,7 +32,7 @@ router.post(
 
     if (!user) {
         return response.status(401).json({
-            error: 'invalid email or password'
+            error: 'Invalid email or password'
         })
     }
 
@@ -40,7 +40,7 @@ router.post(
 
     if (!passwordCorrect) {
         return response.status(401).json({
-            error: 'invalid email or password'
+            error: 'Invalid email or password'
         })
     }
 
