@@ -1,5 +1,4 @@
 import { z } from 'zod'
-import { issue } from 'zod/v4/core/util.cjs'
 
 export const loginSchema = z.object({
     email: z
