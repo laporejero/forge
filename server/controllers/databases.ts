@@ -1,17 +1,19 @@
 import { Router, Request, Response } from 'express'
 import { Database, User } from '../models'
 import tokenExtractor from '../middleware/tokenExtractor'
+import validateBody from '../middleware/validateBody'
+import { databaseSchema, DatabaseInput } from '../schemas/database'
 
 const router = Router()
 
-router.post('/', tokenExtractor, async (req: Request, res: Response) => {
+router.post('/', 
+    tokenExtractor,
+    validateBody(databaseSchema),  
+    async (
+        req: Request<{}, {}, DatabaseInput>, 
+        res: Response
+    ) => {
     const { name } = req.body
-
-    if (typeof name !== 'string' || !name.trim()) {
-        return res.status(400).json({
-            error: 'Database name is required'
-        })
-    }
 
     const existingDb = await Database.findOne({
         where: {
@@ -55,7 +57,7 @@ router.get('/:id', tokenExtractor, async (req: Request<{ id: string }>, res: Res
 
     if (Number.isNaN(id) || id <= 0) {
         return res.status(400).json({
-            error: 'invalid database ID'
+            error: 'Invalid database ID'
         })
     }
 
@@ -73,20 +75,26 @@ router.get('/:id', tokenExtractor, async (req: Request<{ id: string }>, res: Res
 
     if (!database) {
         return res.status(404).json({
-            error: 'database not found'
+            error: 'Database not found'
         })
     }
 
     return res.status(200).json(database)
 })
 
-router.put('/:id', tokenExtractor, async (req: Request<{ id: string }>, res: Response) => {
+router.put('/:id', 
+    tokenExtractor, 
+    validateBody(databaseSchema),
+    async (
+        req: Request<{ id: string }, {}, DatabaseInput>, 
+        res: Response
+    ) => {
     const id = Number(req.params.id)
     const userId = req.decodedToken!.id
 
     if (Number.isNaN(id) || id <= 0) {
         return res.status(400).json({
-            error: 'invalid database ID'
+            error: 'Invalid database ID'
         })
     }
 
@@ -99,17 +107,11 @@ router.put('/:id', tokenExtractor, async (req: Request<{ id: string }>, res: Res
 
     if (!database) {
         return res.status(404).json({
-            error: 'database not found'
+            error: 'Database not found'
         })
     }
 
     const name = req.body.name
-
-    if (typeof name !== 'string' || name.trim() === '') {
-        return res.status(400).json({
-            error: 'invalid name'
-        })
-    }
 
     database.name = name
 
@@ -124,7 +126,7 @@ router.delete('/:id', tokenExtractor, async (req: Request<{ id: string }>, res: 
 
     if (Number.isNaN(id) || id <= 0) {
         return res.status(400).json({
-            error: 'invalid database ID'
+            error: 'Invalid database ID'
         })
     }
 
@@ -137,7 +139,7 @@ router.delete('/:id', tokenExtractor, async (req: Request<{ id: string }>, res: 
 
     if (!database) {
         return res.status(404).json({
-            error: 'database not found'
+            error: 'Database not found'
         })
     }
 
