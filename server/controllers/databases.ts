@@ -113,6 +113,19 @@ router.put('/:id',
 
     const name = req.body.name
 
+    const existingDb = await Database.findOne({
+        where: {
+            name,
+            userId: req.decodedToken!.id
+        }
+    })
+
+    if (existingDb) {
+        return res.status(409).json({
+            error: 'A database with this name already exists'
+        })
+    }
+
     database.name = name
 
     await database.save()
