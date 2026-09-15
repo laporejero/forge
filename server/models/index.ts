@@ -10,8 +10,13 @@ Database.belongsTo(User)
 User.hasMany(Session)
 Session.belongsTo(User)
 
-Database.hasMany(Field)
-Field.belongsTo(Database)
+Database.hasMany(Field, {
+    foreignKey: 'databaseId',
+    onDelete: 'CASCADE'
+})
+Field.belongsTo(Database, {
+    foreignKey: 'databaseId'
+})
 
 Database.hasMany(Record)
 Record.belongsTo(Database)
