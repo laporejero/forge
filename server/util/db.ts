@@ -14,7 +14,7 @@ export const connectToDatabase = async (): Promise<void> => {
         await runMigrations()
         console.log('connected to the database')
     } catch (error) {
-        console.log('failed to connect to database')
+        console.log('failed to connect to database:', error)
         process.exit(1)
     }
 }
