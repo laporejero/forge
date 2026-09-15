@@ -22,6 +22,11 @@ Field.init({
     type: {
         type: DataTypes.STRING,
         allowNull: false,
+    },
+    required: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false
     }
 }, {
     sequelize,
