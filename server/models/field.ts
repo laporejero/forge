@@ -12,7 +12,8 @@ Field.init({
     databaseId: {
         type: DataTypes.INTEGER,
         allowNull: false,
-        references: { model: 'databases', key: 'id' }
+        references: { model: 'databases', key: 'id' },
+        onDelete: 'CASCADE'
     },
     name: {
         type: DataTypes.STRING,
@@ -25,8 +26,13 @@ Field.init({
 }, {
     sequelize,
     underscored: true,
-    timestamps: false,
-    modelName: 'field'
+    timestamps: true,
+    modelName: 'field',
+    indexes: [{
+        unique: true,
+        fields: ['database_id', 'name'],
+        name: 'unique_field_name_per_database'
+    }]
 })
 
 export default Field

@@ -35,7 +35,7 @@ Database.init({
 }, {
     sequelize,
     underscored: true,
-    timestamps: false,
+    timestamps: true,
     modelName: 'database',
     indexes: [{
         unique: true,
