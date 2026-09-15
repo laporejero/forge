@@ -3,6 +3,7 @@ import { Database, User } from '../models'
 import tokenExtractor from '../middleware/tokenExtractor'
 import validateBody from '../middleware/validateBody'
 import { databaseSchema, DatabaseInput } from '../schemas/database'
+import { Op } from 'sequelize'
 
 const router = Router()
 
@@ -116,7 +117,8 @@ router.put('/:id',
     const existingDb = await Database.findOne({
         where: {
             name,
-            userId: req.decodedToken!.id
+            userId: req.decodedToken!.id,
+            id: { [Op.ne]: id }
         }
     })
 
