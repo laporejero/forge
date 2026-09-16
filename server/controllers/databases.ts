@@ -4,6 +4,7 @@ import tokenExtractor from '../middleware/tokenExtractor'
 import validateBody from '../middleware/validateBody'
 import { databaseSchema, DatabaseInput } from '../schemas/database'
 import { Op } from 'sequelize'
+import { parseId } from '../util/parseId'
 
 const router = Router()
 
@@ -42,7 +43,7 @@ router.get('/', tokenExtractor, async (req: Request, res: Response) => {
 
     const databases = await Database.findAll({
         where: { userId },
-        attributes: { exclude: ['userId'] },
+        attributes: { exclude: ['userId', 'createdAt', 'updatedAt'] },
         include: {
             model: User,
             attributes: ['id', 'name', 'email']
@@ -90,10 +91,10 @@ router.put('/:id',
         req: Request<{ id: string }, {}, DatabaseInput>, 
         res: Response
     ) => {
-    const id = Number(req.params.id)
+    const id = parseId(req.params.id)
     const userId = req.decodedToken!.id
 
-    if (Number.isNaN(id) || id <= 0) {
+    if (!id) {
         return res.status(400).json({
             error: 'Invalid database ID'
         })
@@ -136,10 +137,10 @@ router.put('/:id',
 })
 
 router.delete('/:id', tokenExtractor, async (req: Request<{ id: string }>, res: Response) => {
-    const id = Number(req.params.id)
+    const id = parseId(req.params.id)
     const userId = req.decodedToken!.id
 
-    if (Number.isNaN(id) || id <= 0) {
+    if (!id) {
         return res.status(400).json({
             error: 'Invalid database ID'
         })
