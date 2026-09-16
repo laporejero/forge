@@ -1,7 +1,13 @@
 import { Model, DataTypes } from 'sequelize'
 import { sequelize } from '../util/db'
 
-class Field extends Model {}
+class Field extends Model {
+    declare id: number
+    declare databaseId: number
+    declare name: string
+    declare type: string
+    declare required: boolean
+}
 
 Field.init({
     id: {
