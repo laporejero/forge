@@ -11,7 +11,9 @@ export const fieldSchema = z.object({
         .min(1, { error: 'Field name is required' })
         .max(30, { error: 'Field name must be 30 characters or less' }),
     
-    type: z.enum(['text', 'number', 'boolean', 'date']),
+    type: z.enum(['text', 'number', 'boolean', 'date'], {
+        error: 'Field type must be text, number, boolean, or date'
+    }),
     
     required: z.boolean({
         error: (issue) =>
@@ -21,5 +23,5 @@ export const fieldSchema = z.object({
     }).default(false)
 })
 
-export type Field = z.infer<typeof fieldSchema>
+export type FieldInput = z.infer<typeof fieldSchema>
 export type FieldType = z.infer<typeof fieldSchema>['type']
