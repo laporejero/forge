@@ -14,7 +14,7 @@ app.use(express.json())
 app.use('/api/users', usersRouter)
 app.use('/api/login', loginRouter)
 app.use('/api/databases', databasesRouter)
-app.use('/api/:databaseId/fields', fieldsRouter)
+app.use('/api/databases/:databaseId/fields', fieldsRouter)
 
 app.use(unknownEndpoint)
 app.use(errorHandler)
