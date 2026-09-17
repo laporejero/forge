@@ -5,7 +5,7 @@ import bcrypt from 'bcrypt'
 import app from '../app'
 import { User, Database, Session } from '../models'
 import { connectToDatabase, sequelize } from '../util/db'
-import { postDatabase, getDatabaseById, putDatabase, deleteDatabase } from './testHelpers'
+import { postDatabase, getDatabaseById, putDatabase, deleteDatabase, clearTestDatabase } from './testHelpers'
 
 const api = request(app)
 
@@ -17,9 +17,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
     // Clean test database
-    await Session.destroy({ where: {} })
-    await Database.destroy({ where: {} })
-    await User.destroy({ where: {} })
+    await clearTestDatabase()
 
     // Create test user
     const passwordHash = await bcrypt.hash('password123', 10)

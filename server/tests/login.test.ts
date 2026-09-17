@@ -5,6 +5,7 @@ import { beforeAll, beforeEach, afterAll, describe, test, expect } from 'vitest'
 import app from '../app'
 import { User, Session, Database } from '../models'
 import { connectToDatabase, sequelize } from '../util/db'
+import { clearTestDatabase } from './testHelpers'
 
 const api = request(app)
 
@@ -13,9 +14,7 @@ beforeAll(async () => {
 })
 
 beforeEach(async () => {
-    await Session.destroy({ where: {} })
-    await Database.destroy({ where: {} })
-    await User.destroy({ where: {} })
+    await clearTestDatabase()
 
     const passwordHash = await bcrypt.hash('password123', 10)
 
