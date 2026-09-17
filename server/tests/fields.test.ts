@@ -213,7 +213,7 @@ describe('POST /api/databases/:databaseId/fields', () => {
 
         expect(response.body.error).toBe('Required must be either true or false')
     })
-    test('fails with 400 if field required is not boolean', async () => {
+    test('fails with 409 if field name already exists in the database', async () => {
         const newField = {
             name: 'Name',
             type: 'text',
