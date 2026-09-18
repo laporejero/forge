@@ -58,7 +58,7 @@ describe('POST /api/databases', () => {
             .expect(401)
             .expect('Content-Type', /application\/json/)
 
-        expect(response.body.error).toBe('token missing')
+        expect(response.body.error).toBe('Authentication required')
     })
     test('fails with 400 if name if missing', async () => {
         const response = await api
@@ -176,7 +176,7 @@ describe('GET /api/databases', () => {
             .expect(401)
             .expect('Content-Type', /application\/json/)
 
-        expect(response.body.error).toBe('token invalid')
+        expect(response.body.error).toBe('Invalid token')
     })
     test('fails with 401 if token is missing', async () => {
         const response = await api
@@ -184,7 +184,7 @@ describe('GET /api/databases', () => {
             .expect(401)
             .expect('Content-Type', /application\/json/)
 
-        expect(response.body.error).toBe('token missing')
+        expect(response.body.error).toBe('Authentication required')
     })
 })
 describe('GET /api/databases/:id', () => {
