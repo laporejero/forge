@@ -5,7 +5,7 @@ import bcrypt from 'bcrypt'
 import app from '../app'
 import { User, Database, Field } from '../models'
 import { connectToDatabase, sequelize } from '../util/db'
-import { clearTestDatabase, getFields, postField } from './testHelpers'
+import { clearTestDatabase, getFieldById, getFields, postField } from './testHelpers'
 
 const api = request(app)
 
@@ -414,6 +414,110 @@ describe('GET /api/databases/:databaseId/fields', () => {
 
             expect(response.status).toBe(404)
             expect(response.body.error).toBe('Database not found')
+        })
+    })
+})
+describe('GET /api/databases/:databaseId/fields/:fieldId', () => {
+    let testFieldId: number
+
+    beforeEach(async () => {
+        const newField = {
+            name: 'Name',
+            type: 'text',
+            required: true
+        }
+        
+        const addedField = await postField(testDatabase.id, token, newField)
+        testFieldId = addedField.body.id
+    })
+    describe('when request is valid', () => {
+        test('returns the requested field', async () => {
+            const response = await getFieldById(testDatabase.id, testFieldId, token)
+
+            expect(response.status).toBe(200)
+            expect(response.headers['content-type']).toMatch(/application\/json/)
+            expect(response.body.name).toBe('Name')
+        })
+    })
+    describe('when authentication is invalid', () => {
+        test('fails with 401 if user is without authentication', async () => {
+            const response = await api
+                .get(`/api/databases/${testDatabase.id}/fields/${testFieldId}`)
+                .expect(401)
+
+            expect(response.body.error).toBe('Authentication required')
+        })
+        test('fails with 401 if user has invalid token', async () => {
+            const response = await getFieldById(testDatabase.id, testFieldId, 'Bearer invalid-token')
+
+            expect(response.body.error).toBe('Invalid token')
+        })
+    })
+    describe('when databaseId or fieldId is invalid', () => {
+        test('fails with 400 if database ID invalid', async () => {
+            const response = await api
+                .get(`/api/databases/databaseId/fields/${testFieldId}`)
+                .set('Authorization', `Bearer ${token}`)
+                .expect(400)
+
+            expect(response.body.error).toBe('Invalid database ID')
+        })
+        test('fails with 400 if field ID is invalid', async () => {
+            const response = await api
+                .get(`/api/databases/${testDatabase.id}/fields/id`)
+                .set('Authorization', `Bearer ${token}`)
+                .expect(400)
+
+            expect(response.body.error).toBe('Invalid field ID')
+        })
+    })
+    describe('when the requested resources are not found', () => {
+        test('fails with 404 if database does not exist', async () => {
+            const response = await getFieldById(testDatabase.id + 10, testFieldId, token)
+
+            expect(response.body.error).toBe('Database not found')
+        })
+        test('fails with 404 when the database belongs to another user', async () => {
+            await User.create({
+                name: 'Test User 2',
+                email: 'test2@example.com',
+                passwordHash: await bcrypt.hash('password456', 10)
+            })
+
+            // Log in 2nd user
+            const loginResponse = await api
+                .post('/api/login')
+                .send({
+                    email: 'test2@example.com',
+                    password: 'password456'
+                })
+
+            const response = await getFieldById(testDatabase.id, testFieldId, loginResponse.body.token,)
+
+            expect(response.status).toBe(404)
+            expect(response.body.error).toBe('Database not found')
+        })
+        test('fails 404 for nonexistent field', async () => {
+            const response = await getFieldById(testDatabase.id, testFieldId + 10, token)
+
+            expect(response.body.error).toBe('Field not found')
+        })
+        test('fails with 404 when the field belongs to a different database', async () => {
+            const secondDatabase = await Database.create({
+                name: 'Teachers',
+                userId: testDatabase.userId
+            })
+
+            const field = await postField(secondDatabase.id, token, {
+                name: 'Salary',
+                type: 'number',
+                required: true
+            })
+            
+            const response = await getFieldById(testDatabase.id, field.body.id, token)
+            
+            expect(response.status).toBe(404)
+            expect(response.body.error).toBe('Field not found')
         })
     })
 })
