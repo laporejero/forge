@@ -45,3 +45,9 @@ export const postField = async (databaseId: number, token: string, field: object
         .set('Authorization', `Bearer ${token}`)
         .send(field)
 }
+
+export const getFields = async (databaseId: number, token: string) => {
+    return await api
+        .get(`/api/databases/${databaseId}/fields`)
+        .set('Authorization', `Bearer ${token}`)
+}
