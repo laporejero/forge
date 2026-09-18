@@ -13,26 +13,26 @@ const tokenExtractor = async (req: Request, res: Response, next: NextFunction) =
         try {
             req.decodedToken = jwt.verify(authorization.substring(7), SECRET) as DecodedToken
         } catch (error) {
-            return res.status(401).json({ error: 'token invalid' })
+            return res.status(401).json({ error: 'Invalid token' })
         }
     } else {
-        return res.status(401).json({ error: 'token missing' })
+        return res.status(401).json({ error: 'Authentication required' })
     }
 
     const user = await User.findByPk(req.decodedToken.id)
     if (!user) {
-        return res.status(401).json({ error: 'user not found' })
+        return res.status(401).json({ error: 'User not found' })
     }
 
     const token = authorization.substring(7)
     const session = await Session.findOne({ where: { token } })
 
     if (!session) {
-        return res.status(401).json({ error: 'session not found' })
+        return res.status(401).json({ error: 'Session not found' })
     }
 
     if (new Date() > session.expiresAt) {
-        return res.status(401).json({ error: 'session expired' })
+        return res.status(401).json({ error: 'Session expired' })
     }
 
     next()
