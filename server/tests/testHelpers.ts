@@ -11,6 +11,7 @@ export const clearTestDatabase = async () => {
     await User.destroy({ where: {} })
 } 
 
+// databases test helpers
 export const postDatabase = async (token: string, name: string) => {
     return await api 
         .post('/api/databases')
@@ -35,4 +36,12 @@ export const deleteDatabase = async (id: number, token: string) => {
     return await api
         .delete(`/api/databases/${id}`)
         .set('Authorization', `Bearer ${token}`)
+}
+
+// fields test helpers
+export const postField = async (databaseId: number, token: string, field: object) => {
+    return await api
+        .post(`/api/databases/${databaseId}/fields`)
+        .set('Authorization', `Bearer ${token}`)
+        .send(field)
 }
