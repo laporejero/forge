@@ -3,9 +3,9 @@ import { beforeEach, describe, test, expect, beforeAll, afterAll } from 'vitest'
 import bcrypt from 'bcrypt'
 
 import app from '../app'
-import { User, Database } from '../models'
+import { User, Database, Field } from '../models'
 import { connectToDatabase, sequelize } from '../util/db'
-import { clearTestDatabase } from './testHelpers'
+import { clearTestDatabase, getFields, postField } from './testHelpers'
 
 const api = request(app)
 
@@ -100,7 +100,23 @@ describe('POST /api/databases/:databaseId/fields', () => {
             .expect(401)
             .expect('Content-Type', /application\/json/)
 
-        expect(response.body.error).toBe('token missing')
+        expect(response.body.error).toBe('Authentication required')
+    })
+    test('fails with 401 if user has invalid token', async () => {
+        const newField = {
+            name: 'Name',
+            type: 'text',
+            required: true
+        }
+
+        const response = await api
+            .post(`/api/databases/${testDatabase.id}/fields`)
+            .set('Authorization', `Bearer invalid-token`)
+            .send(newField)
+            .expect(401)
+            .expect('Content-Type', /application\/json/)
+
+        expect(response.body.error).toBe('Invalid token')
     })
     test('fails with 400 if database ID is invalid', async () => {
         const newField = {
@@ -245,17 +261,159 @@ describe('POST /api/databases/:databaseId/fields', () => {
             type: 'text',
             required: true
         }
+        
+        const firstResponse = await postField(testDatabase.id, token, newField)
+        const secondResponse =  await postField(secondDatabase.id, token, newField)
 
-        await api
-            .post(`/api/databases/${testDatabase.id}/fields`)
-            .set('Authorization', `Bearer ${token}`)
-            .send(newField)
-            .expect(201)
+        expect(firstResponse.status).toBe(201)
+        expect(secondResponse.status).toBe(201)
 
-        await api
-            .post(`/api/databases/${secondDatabase.id}/fields`)
-            .set('Authorization', `Bearer ${token}`)
-            .send(newField)
-            .expect(201)
+        expect(firstResponse.body.name).toBe('Name')
+        expect(secondResponse.body.name).toBe('Name')
+
+        expect(firstResponse.body.databaseId).toBe(testDatabase.id)
+        expect(secondResponse.body.databaseId).toBe(secondDatabase.id)
+
+        expect(firstResponse.body.id).not.toBe(secondResponse.body.id)
+    })
+})
+describe('GET /api/databases/:databaseId/fields', () => {
+    describe('when database has fields', () => {
+        beforeEach(async () => {
+            const firstField = {
+                name: 'Name',
+                type: 'text',
+                required: true
+            }
+
+            const secondField = {
+                name: 'Age',
+                type: 'number',
+                required: true
+            }
+
+            const thirdField = {
+                name: 'Course',
+                type: 'text',
+                required: true
+            }
+
+            await postField(testDatabase.id, token, firstField)
+            await postField(testDatabase.id, token, secondField)
+            await postField(testDatabase.id, token, thirdField)
+        })
+        test('returns all fields belonging to the database', async () => {
+            const response = await getFields(testDatabase.id, token)
+
+            expect(response.status).toBe(200)
+            expect(response.headers['content-type']).toMatch(/application\/json/)
+            expect(response.body).toHaveLength(3)
+
+            expect(response.body).toEqual(
+                expect.arrayContaining([
+                    expect.objectContaining({ name: 'Name' }),
+                    expect.objectContaining({ name: 'Age' }),
+                    expect.objectContaining({ name: 'Course' })
+                ])
+            )
+        })
+        test('returns fields in creation order, oldest first', async () => {
+            const response = await getFields(testDatabase.id, token)
+
+            expect(response.status).toBe(200)
+            expect(response.headers['content-type']).toMatch(/application\/json/)
+            expect(response.body).toHaveLength(3)
+
+            expect(response.body.map((field: { name: string }) => field.name)).toEqual([
+                'Name',
+                'Age',
+                'Course'
+            ])
+        })
+        test('does not return fields belonging to another database', async () => {
+            const secondDatabase = await Database.create({
+                name: 'Teachers',
+                userId: testDatabase.userId
+            })
+
+            await postField(secondDatabase.id, token, {
+                name: 'Salary',
+                type: 'number',
+                required: true
+            })
+            
+            const response = await getFields(testDatabase.id, token)
+
+            expect(response.status).toBe(200)
+            expect(response.headers['content-type']).toMatch(/application\/json/)
+            expect(response.body).toHaveLength(3)
+
+            expect(response.body.map((field: { name: string }) => field.name)).toEqual([
+                'Name',
+                'Age',
+                'Course'
+            ])
+
+            expect(response.body.map((field: { name: string }) => field.name)).not.toContain('Salary')
+        })
+    })
+    describe('when database has no fields', () => {
+        test('returns []', async () => {
+            const response = await api
+                .get(`/api/databases/${testDatabase.id}/fields`)
+                .set('Authorization', `Bearer ${token}`)
+                .expect(200)
+
+            expect(response.body).toEqual([])
+        })
+    })
+    describe('when database is invalid or inaccessible', () => {
+        test('fails with 401 if user is without authentication', async () => {
+            const response = await api
+                .get(`/api/databases/${testDatabase.id}/fields`)
+                .expect(401)
+
+            expect(response.body.error).toBe('Authentication required')
+        })
+        test('fails with 401 if user has invalid token', async () => {
+            const response = await getFields(testDatabase.id, 'Bearer invalid-token')
+
+            expect(response.status).toBe(401)
+            expect(response.body.error).toBe('Invalid token')
+        })
+        test('fails with 400 if database ID is invalid', async () => {
+            const response = await api
+                .get(`/api/databases/abc/fields`)
+                .set('Authorization', `Bearer ${token}`)
+                .expect(400)
+
+            expect(response.body.error).toBe('Invalid database ID')
+        })
+        test('fails with 404 if database does not exist', async () => {
+            const response = await getFields(testDatabase.id + 10, token)
+
+            expect(response.status).toBe(404)
+            expect(response.body.error).toBe('Database not found')
+        })
+        test('fails with 404 if database belongs to another user', async () => {
+            await User.create({
+                name: 'Test User 2',
+                email: 'test2@example.com',
+                passwordHash: await bcrypt.hash('password456', 10)
+            })
+
+            // Log in 2nd user
+            const loginResponse = await api
+                .post('/api/login')
+                .send({
+                    email: 'test2@example.com',
+                    password: 'password456'
+                })
+
+            const response = await getFields(testDatabase.id, loginResponse.body.token)
+
+            expect(response.status).toBe(404)
+            expect(response.body.error).toBe('Database not found')
+        })
     })
 })
