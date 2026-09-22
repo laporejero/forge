@@ -57,3 +57,15 @@ export const getFieldById = async (databaseId: number, fieldId: number, token: s
         .get(`/api/databases/${databaseId}/fields/${fieldId}`)
         .set('Authorization', `Bearer ${token}`)
 }
+
+export const updateFieldById = async (
+    databaseId: number, 
+    fieldId: number, 
+    token: string, 
+    field: object
+) => {
+    return await api
+        .put(`/api/databases/${databaseId}/fields/${fieldId}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send(field)
+}
