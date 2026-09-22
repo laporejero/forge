@@ -5,7 +5,7 @@ import bcrypt from 'bcrypt'
 import app from '../app'
 import { User, Database, Field } from '../models'
 import { connectToDatabase, sequelize } from '../util/db'
-import { clearTestDatabase, getFieldById, getFields, postField, updateFieldById } from './testHelpers'
+import { clearTestDatabase, deleteField, getFieldById, getFields, postField, updateFieldById } from './testHelpers'
 
 const api = request(app)
 
@@ -802,5 +802,99 @@ describe('PUT /api/databases/:databaseId/fields/:fieldId', () => {
                 expect(response.body.error).toBe('Field not found')
             })
         })
+    })
+})
+describe('DELETE /api/databases/:databaseId/fields/:fieldId', () => {
+    let fieldId: number
+
+    beforeEach(async () => {
+        const field = await Field.create({
+            name: 'Name',
+            type: 'text',
+            required: true,
+            databaseId: testDatabase.id
+        })
+
+        fieldId = field.id
+    })
+    test('successfully deletes an existing field', async () => {
+        const response = await deleteField(testDatabase.id, fieldId, token)
+
+        expect(response.status).toBe(204)
+
+        const field = await Field.findByPk(fieldId)
+        expect(field).toBeNull()
+    })
+    test('fails with 401 if user is without authentication', async () => {
+        const response = await api
+            .delete(`/api/databases/${testDatabase.id}/fields/${fieldId}`)
+
+        expect(response.status).toBe(401)
+        expect(response.body.error).toBe('Authentication required')
+    })
+    test('fails with 400 if database ID is invalid', async () => {
+        const response = await api
+            .delete(`/api/databases/id/fields/${fieldId}`)
+            .set('Authorization', `Bearer ${token}`)
+
+        expect(response.status).toBe(400)
+        expect(response.body.error).toBe('Invalid database ID')
+    })
+    test('fails with 400 if field ID is invalid', async () => {
+        const response = await api
+            .delete(`/api/databases/${testDatabase.id}/fields/id`)
+            .set('Authorization', `Bearer ${token}`)
+
+        expect(response.status).toBe(400)
+        expect(response.body.error).toBe('Invalid field ID')
+    })
+    test('fails with 404 if database does not exist', async () => {
+        const response = await deleteField(testDatabase.id + 99, fieldId, token)
+
+        expect(response.status).toBe(404)
+        expect(response.body.error).toBe('Database not found')
+    })
+    test('fails with 404 if field does not exist', async () => {
+        const response = await deleteField(testDatabase.id, fieldId + 99, token)
+
+        expect(response.status).toBe(404)
+        expect(response.body.error).toBe('Field not found')
+    })
+    test('fails with 404 when database belongs to another user', async () => {
+        await User.create({
+            name: 'Test User 2',
+            email: 'test2@example.com',
+            passwordHash: await bcrypt.hash('password456', 10)
+        })
+
+        const loginResponse = await api
+            .post('/api/login')
+            .send({
+                email: 'test2@example.com',
+                password: 'password456'
+            })
+
+        const response = await deleteField(testDatabase.id, fieldId, loginResponse.body.token)
+
+        expect(response.status).toBe(404)
+        expect(response.body.error).toBe('Database not found')
+    })
+    test('fails with 404 when field exists but belongs to a different database', async () => {
+        const secondDatabase = await Database.create({
+            name: 'Teachers',
+            userId: testDatabase.userId
+        })
+
+        const field = await Field.create({
+            name: 'Subject',
+            type: 'text',
+            required: false,
+            databaseId: secondDatabase.id
+        })
+
+        const response = await deleteField(testDatabase.id, field.id, token)
+
+        expect(response.status).toBe(404)
+        expect(response.body.error).toBe('Field not found')
     })
 })
