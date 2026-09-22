@@ -5,7 +5,7 @@ import bcrypt from 'bcrypt'
 import app from '../app'
 import { User, Database, Field } from '../models'
 import { connectToDatabase, sequelize } from '../util/db'
-import { clearTestDatabase, getFieldById, getFields, postField } from './testHelpers'
+import { clearTestDatabase, getFieldById, getFields, postField, updateFieldById } from './testHelpers'
 
 const api = request(app)
 
@@ -518,6 +518,289 @@ describe('GET /api/databases/:databaseId/fields/:fieldId', () => {
             
             expect(response.status).toBe(404)
             expect(response.body.error).toBe('Field not found')
+        })
+    })
+})
+describe('PUT /api/databases/:databaseId/fields/:fieldId', () => {
+    describe('when database has a field', () => {
+        let fieldId: number
+
+        beforeEach(async () => {
+            const field = await Field.create({
+                name: 'Name',
+                type: 'text',
+                required: true,
+                databaseId: testDatabase.id
+            })
+
+            fieldId = field.id
+        })
+        test('successfully updates name, type, and required', async () => {
+            const updatedField = {
+                name: 'Age',
+                type: 'number',
+                required: false,
+            }
+
+            const response = await updateFieldById(testDatabase.id, fieldId, token, updatedField)
+
+            expect(response.status).toBe(200)
+            expect(response.body.name).toBe('Age')
+            expect(response.body.type).toBe('number')
+            expect(response.body.required).toBe(false)
+            expect(response.body.id).toBe(fieldId)
+        })
+        test('allows keeping the field\'s current name', async () => {
+            const updatedField = {
+                name: 'Name',
+                type: 'text',
+                required: false
+            }
+
+            const response = await updateFieldById(testDatabase.id, fieldId, token, updatedField)
+            
+            expect(response.status).toBe(200)
+            expect(response.body.name).toBe('Name')
+            expect(response.body.type).toBe('text')
+            expect(response.body.required).toBe(false)
+            expect(response.body.id).toBe(fieldId)
+        })
+        test('fails with 409 if user renames to another field\'s name within the same database', async () => {
+            const newField = await Field.create({
+                name: 'Age',
+                type: 'number',
+                required: true,
+                databaseId: testDatabase.id
+            })
+
+            const updatedField = {
+                name: 'Name',
+                type: 'text',
+                required: true
+            }
+
+            const response = await updateFieldById(testDatabase.id, newField.id, token, updatedField)
+
+            expect(response.status).toBe(409)
+            expect(response.body.error).toBe('A field with this name already exists')
+        })
+        test('allows the same field name if it exists in a different database', async () => {
+            const secondDatabase = await Database.create({
+                name: 'Teachers',
+                userId: testDatabase.userId
+            })
+
+            await Field.create({
+                name: 'Email',
+                type: 'text',
+                required: false,
+                databaseId: secondDatabase.id
+            })
+
+            const field = await Field.create({
+                name: 'Age',
+                type: 'number',
+                required: false,
+                databaseId: testDatabase.id
+            })
+
+            const updatedField = {
+                name: 'Email',
+                type: 'text',
+                required: true
+            }
+
+            const response = await updateFieldById(testDatabase.id, field.id, token, updatedField)
+
+            expect(response.status).toBe(200)
+            expect(response.body.name).toBe('Email')
+            expect(response.body.required).toBe(true)
+        })
+        describe('when authentication is invalid', () => {
+            test('fails with 401 if user is without authentication', async () => {
+                const updatedField = {
+                    name: 'Name',
+                    type: 'text',
+                    required: false
+                }
+
+                const response = await api
+                    .put(`/api/databases/${testDatabase.id}/fields/${fieldId}`)
+                    .send(updatedField)
+                    .expect(401)
+
+                expect(response.body.error).toBe('Authentication required')
+            })
+            test('fails with 401 if user\'s token is invalid', async () => {
+                const updatedField = {
+                    name: 'Name',
+                    type: 'text',
+                    required: false
+                }
+
+                const response = await updateFieldById(testDatabase.id, fieldId, 'Bearer invalid-token', updatedField)
+
+                expect(response.status).toBe(401)
+                expect(response.body.error).toBe('Invalid token')
+            })
+        })
+        describe('when databaseId or fieldId is invalid', () => {
+            test('fails with 400 if database ID is invalid', async () => {
+                const updatedField = {
+                    name: 'Name',
+                    type: 'text',
+                    required: false
+                }
+
+                const response = await api
+                    .put(`/api/databases/id/fields/${fieldId}`)
+                    .set('Authorization', `Bearer ${token}`)
+                    .send(updatedField)
+                    .expect(400)
+
+                expect(response.body.error).toBe('Invalid database ID')
+            })
+            test('fails with 400 if field ID is invalid', async () => {
+                const updatedField = {
+                    name: 'Name',
+                    type: 'text',
+                    required: false
+                }
+
+                const response = await api
+                    .put(`/api/databases/${testDatabase.id}/fields/id`)
+                    .set('Authorization', `Bearer ${token}`)
+                    .send(updatedField)
+                    .expect(400)
+
+                expect(response.body.error).toBe('Invalid field ID')
+            })
+        })
+        describe('when user inputs an invalid body', () => {
+            test('fails with 400 if name is empty', async () => {
+                const updatedField = {
+                    name: '',
+                    type: 'text',
+                    required: false
+                }
+
+                const response = await updateFieldById(testDatabase.id, fieldId, token, updatedField)
+
+                expect(response.status).toBe(400)
+                expect(response.body.error).toBe('Field name is required')
+            })
+            test('fails with 400 if name is invalid', async () => {
+                const updatedField = {
+                    name: 123,
+                    type: 'text',
+                    required: false
+                }
+
+                const response = await updateFieldById(testDatabase.id, fieldId, token, updatedField)
+
+                expect(response.status).toBe(400)
+                expect(response.body.error).toBe('Invalid field name')
+            })
+            test('fails with 400 if user inputs an unsupported field type', async () => {
+                const updatedField = {
+                    name: 'Age',
+                    type: 'string',
+                    required: true
+                }
+
+                const response = await updateFieldById(testDatabase.id, fieldId, token, updatedField)
+
+                expect(response.status).toBe(400)
+                expect(response.body.error).toBe('Field type must be text, number, boolean, or date')
+            })
+            test('fails with 400 if user inputs non-boolean in required', async () => {
+                const updatedField = {
+                    name: 'Age',
+                    type: 'number',
+                    required: 'true'
+                }
+
+                const response = await updateFieldById(testDatabase.id, fieldId, token, updatedField)
+
+                expect(response.status).toBe(400)
+                expect(response.body.error).toBe('Required must be either true or false')
+            })
+        })
+        describe('when the requested resources are not found', () => {
+            test('fails with 404 if database does not exist', async () => {
+                const updatedField = {
+                    name: 'Age',
+                    type: 'number',
+                    required: true
+                }
+
+                const response = await updateFieldById(testDatabase.id + 99, fieldId, token, updatedField)
+
+                expect(response.status).toBe(404)
+                expect(response.body.error).toBe('Database not found')
+            })
+            test('fails with 404 when database belongs to another user', async () => {
+                await User.create({
+                    name: 'Test User 2',
+                    email: 'test2@example.com',
+                    passwordHash: await bcrypt.hash('password456', 10)
+                })
+
+                // Log in 2nd user
+                const loginResponse = await api
+                    .post('/api/login')
+                    .send({
+                        email: 'test2@example.com',
+                        password: 'password456'
+                    })
+
+                const updatedField = {
+                    name: 'Age',
+                    type: 'number',
+                    required: true
+                }
+
+                const response = await updateFieldById(testDatabase.id, fieldId, loginResponse.body.token, updatedField)
+
+                expect(response.status).toBe(404)
+                expect(response.body.error).toBe('Database not found')
+            })
+            test('fails with 404 if field does not exist', async () => {
+                const updatedField = {
+                    name: 'Age',
+                    type: 'number',
+                    required: true
+                }
+
+                const response = await updateFieldById(testDatabase.id, fieldId + 99, token, updatedField)
+
+                expect(response.status).toBe(404)
+                expect(response.body.error).toBe('Field not found')
+            })
+            test('fails with 404 when field exists but belongs to a different database', async () => {
+                const secondDatabase = await Database.create({
+                    name: 'Teachers',
+                    userId: testDatabase.userId
+                })
+
+                const field = await Field.create({
+                    name: 'Subject',
+                    type: 'text',
+                    required: false,
+                    databaseId: secondDatabase.id
+                })
+
+                const updatedField = {
+                    name: 'Age',
+                    type: 'number',
+                    required: true
+                }
+
+                const response = await updateFieldById(testDatabase.id, field.id, token, updatedField)
+
+                expect(response.status).toBe(404)
+                expect(response.body.error).toBe('Field not found')
+            })
         })
     })
 })
