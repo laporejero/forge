@@ -69,3 +69,9 @@ export const updateFieldById = async (
         .set('Authorization', `Bearer ${token}`)
         .send(field)
 }
+
+export const deleteField = async (databaseId: number, fieldId: number, token: string) => {
+    return await api
+        .delete(`/api/databases/${databaseId}/fields/${fieldId}`)
+        .set('Authorization', `Bearer ${token}`)
+}
