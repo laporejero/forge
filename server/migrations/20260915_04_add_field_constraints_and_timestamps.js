@@ -10,15 +10,17 @@ module.exports = {
                 name: 'unique_field_name_per_database'
             }
         )
-        await queryInterface.changeColumn('fields', 'database_id', {
-            type: DataTypes.INTEGER,
-            allowNull: false,
+        await queryInterface.removeConstraint('fields', 'fields_database_id_fkey')
+        await queryInterface.addConstraint('fields', {
+            fields: ['database_id'],
+            type: 'foreign key',
+            name: 'fields_database_id_fkey',
             references: {
-                model: 'databases',
-                key: 'id'
+                table: 'databases',
+                field: 'id'
             },
             onDelete: 'CASCADE'
-        }),
+        })
         await queryInterface.addColumn('fields', 'required', {
             type: DataTypes.BOOLEAN,
             allowNull: false,
@@ -58,12 +60,17 @@ module.exports = {
         await queryInterface.removeColumn('fields', 'updated_at')
         await queryInterface.removeColumn('fields', 'created_at')
         await queryInterface.removeColumn('fields', 'required')
-        await queryInterface.changeColumn('fields', 'database_id', {
-            type: DataTypes.INTEGER,
-            allowNull: false,
+        await queryInterface.removeConstraint(
+            'fields',
+            'fields_database_id_fkey'
+        )
+        await queryInterface.addConstraint('fields', {
+            fields: ['database_id'],
+            type: 'foreign key',
+            name: 'fields_database_id_fkey',
             references: {
-                model: 'databases',
-                key: 'id'
+                table: 'databases',
+                field: 'id'
             }
         })
         await queryInterface.removeIndex('fields', 'unique_field_name_per_database')
