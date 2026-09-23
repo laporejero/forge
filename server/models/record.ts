@@ -1,7 +1,11 @@
 import { Model, DataTypes } from 'sequelize'
 import { sequelize } from '../util/db'
 
-class Record extends Model {}
+class Record extends Model {
+    declare id: number
+    declare databaseId: number
+    declare data: object
+}
 
 Record.init({
     id: {
@@ -12,7 +16,8 @@ Record.init({
     databaseId: {
         type: DataTypes.INTEGER,
         allowNull: false,
-        references: { model: 'databases', key: 'id' }
+        references: { model: 'databases', key: 'id' },
+        onDelete: 'CASCADE'
     },
     data: {
         type: DataTypes.JSONB,
