@@ -18,7 +18,12 @@ Field.belongsTo(Database, {
     foreignKey: 'databaseId'
 })
 
-Database.hasMany(Record)
-Record.belongsTo(Database)
+Database.hasMany(Record, {
+    foreignKey: 'databaseId',
+    onDelete: 'CASCADE'
+})
+Record.belongsTo(Database, {
+    foreignKey: 'databaseId'
+})
 
 export { User, Database, Field, Record, Session }
