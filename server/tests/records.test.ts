@@ -277,13 +277,13 @@ describe('POST /api/databases/:databaseId/records', () => {
         const data = {
             [nameField.id]: 'Bob',
             [ageField.id]: 21,
-            [dateField.id]: '2025-31-02'
+            [dateField.id]: '02-25-2025'
         }
 
         const response = await postRecord(testDatabase.id, token, data)
 
         expect(response.status).toBe(400)
-        expect(response.body.error).toBe('Field \'Birth Date\' must be a real date')
+        expect(response.body.error).toBe('Field \'Birth Date\' must be a date in YYYY-MM-DD format')
     })
     test('fails with 400 if user inputs an impossible date on a field with a \'date\' type', async () => {
         let dateField: Field
