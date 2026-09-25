@@ -1,11 +1,12 @@
 import request from 'supertest'
 import app from '../app'
-import { User, Database, Session, Field } from '../models'
+import { User, Database, Session, Field, Record } from '../models'
 
 const api = request(app)
 
 export const clearTestDatabase = async () => {
     await Session.destroy({ where: {} })
+    await Record.destroy({ where: {} })
     await Field.destroy({ where: {} })
     await Database.destroy({ where: {} })
     await User.destroy({ where: {} })
@@ -74,4 +75,12 @@ export const deleteField = async (databaseId: number, fieldId: number, token: st
     return await api
         .delete(`/api/databases/${databaseId}/fields/${fieldId}`)
         .set('Authorization', `Bearer ${token}`)
+}
+
+// records test helpers
+export const postRecord = async (databaseId: number | string, token: string, data: object) => {
+    return await api
+        .post(`/api/databases/${databaseId}/records`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ data })
 }
