@@ -60,4 +60,37 @@ router.post('/',
     return res.status(201).json(record)
 })
 
+router.get('/',
+    tokenExtractor,
+    async (
+        req: Request<{ databaseId: string }>,
+        res: Response
+    ) => {
+    const databaseId = parseId(req.params.databaseId)
+    const userId = req.decodedToken!.id
+
+    if (!databaseId) {
+        return res.status(400).json({
+            error: 'Invalid database ID'
+        })
+    }
+
+    const database = await Database.findOne({
+        where: { id: databaseId, userId }
+    })
+
+    if (!database) {
+        return res.status(404).json({
+            error: 'Database not found'
+        })
+    }
+
+    const records: Record[] = await Record.findAll({
+        where: { databaseId },
+        order: [['id', 'ASC']]
+    })
+
+    return res.status(200).json(records)
+})
+
 export default router
