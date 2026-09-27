@@ -5,7 +5,7 @@ import bcrypt from 'bcrypt'
 import app from '../app'
 import { User, Database, Field, Record } from '../models'
 import { connectToDatabase, sequelize } from '../util/db'
-import { clearTestDatabase, postRecord } from './testHelpers'
+import { clearTestDatabase, getRecords, postRecord } from './testHelpers'
 
 const api = request(app)
 
@@ -305,5 +305,151 @@ describe('POST /api/databases/:databaseId/records', () => {
 
         expect(response.status).toBe(400)
         expect(response.body.error).toBe('Field \'Birth Date\' must be a real date')
+    })
+})
+describe('GET /api/databases/:databaseId/records', () => {
+    describe('when database has records', () => {
+        beforeEach(async () => {
+            const firstData = {
+                [nameField.id]: 'Bob',
+                [ageField.id]: 21
+            }
+
+            const secondData = {
+                [nameField.id]: 'Alice',
+                [ageField.id]: 22
+            }
+
+            const thirdData = {
+                [nameField.id]: 'Joey',
+                [ageField.id]: 20
+            }
+
+            await postRecord(testDatabase.id, token, firstData)
+            await postRecord(testDatabase.id, token, secondData)
+            await postRecord(testDatabase.id, token, thirdData)
+        })
+        test('returns all records belonging to the database', async () => {
+            const response = await getRecords(testDatabase.id, token)
+            
+            expect(response.status).toBe(200)
+            expect(response.body).toHaveLength(3)
+
+            expect(response.body).toEqual(
+                expect.arrayContaining([
+                    expect.objectContaining({ 
+                        data: expect.objectContaining({
+                            [nameField.id]: 'Bob'
+                        }) 
+                    }),
+                    expect.objectContaining({ 
+                        data: expect.objectContaining({
+                            [nameField.id]: 'Alice'
+                        }) 
+                    }),
+                    expect.objectContaining({ 
+                        data: expect.objectContaining({
+                            [nameField.id]: 'Joey'
+                        }) 
+                    })
+                ])
+            )
+        })
+        test('returns records ordered by id in ascending order', async () => {
+            const response = await getRecords(testDatabase.id, token)
+
+            expect(response.status).toBe(200)
+
+            const ids = response.body.map((record: Record) => record.id)
+
+            expect(ids).toEqual([...ids].sort((a, b) => a - b))
+        })
+    })
+    describe('when database has no records', () => {
+        test('returns []', async () => {
+            const response = await getRecords(testDatabase.id, token)
+
+            expect(response.status).toBe(200)
+            expect(response.body).toEqual([])
+        })
+    })
+    describe('when database is invalid or inaccessible', () => {
+        test('fails with 401 if user is without authentication', async () => {
+            const response = await api
+                .get(`/api/databases/${testDatabase.id}/records`)
+                .expect(401)
+
+            expect(response.body.error).toBe('Authentication required')
+        })
+        test('fails with 401 if user has invalid token', async () => {
+            const response = await getRecords(testDatabase.id, 'invalid-token')
+
+            expect(response.body.error).toBe('Invalid token')
+        })
+        test('fails with 400 if database ID is invalid', async () => {
+            const response = await getRecords('invalid-id', token)
+
+            expect(response.body.error).toBe('Invalid database ID')
+        })
+        test('fails with 404 if database does not exist', async () => {
+            const response = await getRecords(testDatabase.id + 99, token)
+
+            expect(response.body.error).toBe('Database not found')
+        })
+        test('fails with 404 when accessing another user\'s database', async () => {
+            await User.create({
+                name: 'Test User 2',
+                email: 'test2@example.com',
+                passwordHash: await bcrypt.hash('password456', 10)
+            })
+
+            // Log in 2nd user
+            const loginResponse = await api
+                .post('/api/login')
+                .send({
+                    email: 'test2@example.com',
+                    password: 'password456'
+                })
+
+            const response = await getRecords(testDatabase.id, loginResponse.body.token)
+
+            expect(response.body.error).toBe('Database not found')
+        })
+        test('must never return Records belonging to another Database', async () => {
+            const secondDatabase = await Database.create({
+                name: 'Employees',
+                userId: testDatabase.userId
+            })
+
+            const employeeNameField = await Field.create({
+                databaseId: secondDatabase.id,
+                name: 'Name',
+                type: 'text',
+                required: true
+            })
+
+            const otherData = {
+                [employeeNameField.id]: 'John'
+            }
+
+            const otherRecordResponse = await postRecord(
+                secondDatabase.id,
+                token,
+                otherData
+            )
+
+            const response = await getRecords(
+                testDatabase.id,
+                token
+            )
+
+            expect(response.status).toBe(200)
+
+            const returnedIds = response.body.map(
+                (record: Record) => record.id
+            )
+
+            expect(returnedIds).not.toContain(otherRecordResponse.body.id)
+        })
     })
 })
