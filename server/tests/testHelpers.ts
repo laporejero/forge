@@ -84,3 +84,9 @@ export const postRecord = async (databaseId: number | string, token: string, dat
         .set('Authorization', `Bearer ${token}`)
         .send({ data })
 }
+
+export const getRecords = async (databaseId: number | string, token: string) => {
+    return await api
+        .get(`/api/databases/${databaseId}/records`)
+        .set('Authorization', `Bearer ${token}`)
+}
