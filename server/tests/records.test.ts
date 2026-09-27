@@ -384,16 +384,19 @@ describe('GET /api/databases/:databaseId/records', () => {
         test('fails with 401 if user has invalid token', async () => {
             const response = await getRecords(testDatabase.id, 'invalid-token')
 
+            expect(response.status).toBe(401)
             expect(response.body.error).toBe('Invalid token')
         })
         test('fails with 400 if database ID is invalid', async () => {
             const response = await getRecords('invalid-id', token)
 
+            expect(response.status).toBe(400)
             expect(response.body.error).toBe('Invalid database ID')
         })
         test('fails with 404 if database does not exist', async () => {
             const response = await getRecords(testDatabase.id + 99, token)
 
+            expect(response.status).toBe(404)
             expect(response.body.error).toBe('Database not found')
         })
         test('fails with 404 when accessing another user\'s database', async () => {
@@ -413,6 +416,7 @@ describe('GET /api/databases/:databaseId/records', () => {
 
             const response = await getRecords(testDatabase.id, loginResponse.body.token)
 
+            expect(response.status).toBe(404)
             expect(response.body.error).toBe('Database not found')
         })
         test('must never return Records belonging to another Database', async () => {
