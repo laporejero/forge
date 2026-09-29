@@ -90,3 +90,13 @@ export const getRecords = async (databaseId: number | string, token: string) => 
         .get(`/api/databases/${databaseId}/records`)
         .set('Authorization', `Bearer ${token}`)
 }
+
+export const getRecordById = async (
+    databaseId: number | string, 
+    recordId: number | string,
+    token: string
+) => {
+    return api
+        .get(`/api/databases/${databaseId}/records/${recordId}`)
+        .set('Authorization', `Bearer ${token}`)
+}
