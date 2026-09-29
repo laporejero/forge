@@ -5,7 +5,8 @@ import bcrypt from 'bcrypt'
 import app from '../app'
 import { User, Database, Field, Record } from '../models'
 import { connectToDatabase, sequelize } from '../util/db'
-import { clearTestDatabase, getRecords, postRecord } from './testHelpers'
+import { clearTestDatabase, getRecordById, getRecords, postRecord } from './testHelpers'
+import { email } from 'zod'
 
 const api = request(app)
 
@@ -454,6 +455,120 @@ describe('GET /api/databases/:databaseId/records', () => {
             )
 
             expect(returnedIds).not.toContain(otherRecordResponse.body.id)
+        })
+    })
+})
+describe('GET /api/databases/:databaseId/records/:recordId', () => {
+    describe('when database has a record', () => {
+        let testRecordId: number
+
+        beforeEach(async () => {
+            const newData = {
+                [nameField.id]: 'Bob',
+                [ageField.id]: 21
+            }
+
+            const addedData = await postRecord(testDatabase.id, token, newData)
+            testRecordId = addedData.body.id
+        })
+        test('returns the requested record', async () => {
+            const response = await getRecordById(testDatabase.id, testRecordId, token)
+            
+            expect(response.status).toBe(200)
+            expect(response.headers['content-type']).toMatch(/application\/json/)
+            expect(response.body).toEqual(
+                expect.objectContaining({
+                    id: testRecordId,
+                    databaseId: testDatabase.id,
+                    data: expect.objectContaining({
+                        [nameField.id]: 'Bob'
+                    })
+                })
+            )
+        })
+        test('fails with 401 if user is without authentication', async () => {
+            const response = await api
+                .get(`/api/databases/${testDatabase.id}/records/${testRecordId}`)
+                .expect(401)
+            
+            expect(response.body.error).toBe('Authentication required')
+        })
+        test('fails with 401 if user has invalid token', async () => {
+            const response = await getRecordById(testDatabase.id, testRecordId, 'invalid-token')
+            
+            expect(response.status).toBe(401)
+            expect(response.body.error).toBe('Invalid token')
+        })
+        test('fails with 400 if database ID is invalid', async () => {
+            const response = await getRecordById('invalid-id', testRecordId, token)
+            
+            expect(response.status).toBe(400)
+            expect(response.body.error).toBe('Invalid database ID')
+        })
+        test('fails with 400 if record ID is invalid', async () => {
+            const response = await getRecordById(testDatabase.id, 'invalid-id', token)
+            
+            expect(response.status).toBe(400)
+            expect(response.body.error).toBe('Invalid record ID')
+        })
+        test('fails with 404 if database does not exist', async () => {
+            const response = await getRecordById(testDatabase.id + 99, testRecordId, token)
+            
+            expect(response.status).toBe(404)
+            expect(response.body.error).toBe('Database not found')
+        })
+        test('fails with 404 when accessing another user\'s database', async () => {
+            await User.create({
+                name: 'Test User 2',
+                email: 'test2@example.com',
+                passwordHash: await bcrypt.hash('password456', 10)
+            })
+
+            const loginResponse = await api
+                .post('/api/login')
+                .send({
+                    email: 'test2@example.com',
+                    password: 'password456'
+                })
+
+            const response = await getRecordById(
+                testDatabase.id, 
+                testRecordId,
+                loginResponse.body.token,
+            )
+
+            expect(response.status).toBe(404)
+            expect(response.body.error).toBe('Database not found')
+        })
+        test('fails with 404 if record does not exist', async () => {
+            const response = await getRecordById(testDatabase.id, testRecordId + 99, token)
+
+            expect(response.status).toBe(404)
+            expect(response.body.error).toBe('Record not found')
+        })
+        test('must never return a record that belongs to another database', async () => {
+            const secondDatabase = await Database.create({
+                name: 'Employees',
+                userId: testDatabase.userId
+            })
+
+            const employeeNameField = await Field.create({
+                databaseId: secondDatabase.id,
+                name: 'Name',
+                type: 'text',
+                required: true
+            })
+
+            const otherData = {
+                [employeeNameField.id]: 'John'
+            }
+
+            const otherRecordResponse = await postRecord(secondDatabase.id, token, otherData)
+
+            const response = await getRecordById(testDatabase.id, otherRecordResponse.body.id, token)
+
+            expect(response.status).toBe(404)
+            expect(response.body.error).toBe('Record not found')
         })
     })
 })
