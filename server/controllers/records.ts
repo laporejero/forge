@@ -93,4 +93,49 @@ router.get('/',
     return res.status(200).json(records)
 })
 
+router.get('/:recordId',
+    tokenExtractor,
+    async (
+        req: Request<{ databaseId: string, recordId: string }>,
+        res: Response
+    ) => {
+    const databaseId = parseId(req.params.databaseId)
+    const recordId = parseId(req.params.recordId)
+    const userId = req.decodedToken!.id
+
+    if (!databaseId) {
+        return res.status(400).json({
+            error: 'Invalid database ID'
+        })
+    }
+
+    if (!recordId) {
+        return res.status(400).json({
+            error: 'Invalid record ID'
+        })
+    }
+
+    const database = await Database.findOne({
+        where: { id: databaseId, userId }
+    })
+
+    if (!database) {
+        return res.status(404).json({
+            error: 'Database not found'
+        })
+    }
+
+    const record = await Record.findOne({
+        where: { databaseId, id: recordId }
+    })
+
+    if (!record) {
+        return res.status(404).json({
+            error: 'Record not found'
+        })
+    }
+
+    return res.status(200).json(record)
+})
+
 export default router
