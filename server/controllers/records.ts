@@ -5,6 +5,7 @@ import validateBody from '../middleware/validateBody'
 import { recordSchema, RecordInput } from '../schemas/record'
 import { parseId } from '../util/parseId'
 import { validateRecordData } from '../util/validateRecordData'
+import { reset } from 'supertest/lib/cookies'
 
 const router = Router({ mergeParams: true })
 
@@ -135,6 +136,150 @@ router.get('/:recordId',
         })
     }
 
+    return res.status(200).json(record)
+})
+
+router.put('/:recordId',
+    tokenExtractor,
+    validateBody(recordSchema),
+    async (
+        req: Request<{databaseId : string, recordId: string}, {}, RecordInput>,
+        res: Response
+    ) => {
+    const databaseId = parseId(req.params.databaseId)
+    const recordId = parseId(req.params.recordId)
+    const userId = req.decodedToken!.id
+
+    if (!databaseId) {
+        return res.status(400).json({
+            error: 'Invalid database ID'
+        })
+    }
+
+    if (!recordId) {
+        return res.status(400).json({
+            error: 'Invalid record ID'
+        })
+    }
+
+    const database = await Database.findOne({
+        where: { id: databaseId, userId }
+    })
+
+    if (!database) {
+        return res.status(404).json({
+            error: 'Database not found'
+        })
+    }
+
+    const record = await Record.findOne({
+        where: { databaseId, id: recordId }
+    })
+
+    if (!record) {
+        return res.status(404).json({
+            error: 'Record not found'
+        })
+    }
+
+    const fields = await Field.findAll({
+        where: { databaseId }
+    })
+
+    if (fields.length === 0) {
+        return res.status(400).json({
+            error: 'Database must have at least one field before updating records'
+        })
+    }
+
+    // validate replacement data against dynamic fields
+    const validationResult = validateRecordData(req.body.data, fields)
+
+    if (!validationResult.valid) {
+        return res.status(400).json({
+            error: validationResult.error
+        })
+    }
+
+    // PUT
+    record.data = req.body.data
+
+    await record.save()
+
+    return res.status(200).json(record)
+})
+
+router.patch('/:recordId',
+    tokenExtractor,
+    validateBody(recordSchema),
+    async (
+        req: Request<{databaseId: string, recordId: string}, {}, RecordInput>,
+        res: Response
+    ) => {
+    const databaseId = parseId(req.params.databaseId)
+    const recordId = parseId(req.params.recordId)
+    const userId = req.decodedToken!.id
+
+    if (!databaseId) {
+        return res.status(400).json({
+            error: 'Invalid database ID'
+        })
+    }
+
+    if (!recordId) {
+        return res.status(400).json({
+            error: 'Invalid record ID'
+        })
+    }
+
+    const database = await Database.findOne({
+        where: { id: databaseId, userId }
+    })
+
+    if (!database) {
+        return res.status(404).json({
+            error: 'Database not found'
+        })
+    }
+
+    const record = await Record.findOne({
+        where: { databaseId, id: recordId }
+    })
+
+    if (!record) {
+        return res.status(404).json({
+            error: 'Record not found'
+        })
+    }
+
+    const fields = await Field.findAll({
+        where: { databaseId }
+    })
+
+    if (fields.length === 0) {
+        return res.status(400).json({
+            error: 'Database must have at least one field before updating records'
+        })
+    }
+
+    // PATCH
+    const mergedData = {
+        ...record.data,
+        ...req.body.data
+    }
+
+    const validationResult = validateRecordData(mergedData, fields)
+
+    if (!validationResult.valid) {
+        return res.status(400).json({
+            error: validationResult.error
+        })
+    }
+
+    record.data = mergedData
+
+    await record.save()
+    
     return res.status(200).json(record)
 })
 
