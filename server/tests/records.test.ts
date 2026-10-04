@@ -682,7 +682,7 @@ describe('PUT /api/databases/:databaseId/records/:recordId', () => {
         expect(response.status).toBe(404)
         expect(response.body.error).toBe("Database not found")
     })
-    test('fails with 400 if record does not exist', async () => {
+    test('fails with 404 if record does not exist', async () => {
         const updatedData = {
             [nameField.id]: 'Alice',
             [ageField.id]: 25
@@ -801,5 +801,16 @@ describe('PUT /api/databases/:databaseId/records/:recordId', () => {
         expect(response.body.error).toBe(
             'Database must have at least one field before updating records'
         )
+    })
+    test('removes optional field values omitted from the update', async () => {
+        const updatedData = {
+            [nameField.id]: 'Alice'
+        }
+
+        const response = await updateRecordById(testDatabase.id, testRecordId, token, updatedData)
+
+        expect(response.status).toBe(200)
+        expect(response.body.data).toEqual(updatedData)
+        expect(response.body.data).not.toHaveProperty(String(ageField.id))
     })
 })
