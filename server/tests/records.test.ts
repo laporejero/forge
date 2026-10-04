@@ -5,8 +5,7 @@ import bcrypt from 'bcrypt'
 import app from '../app'
 import { User, Database, Field, Record } from '../models'
 import { connectToDatabase, sequelize } from '../util/db'
-import { clearTestDatabase, getRecordById, getRecords, postRecord } from './testHelpers'
-import { email } from 'zod'
+import { clearTestDatabase, getRecordById, getRecords, postRecord, updateRecordById } from './testHelpers'
 
 const api = request(app)
 
@@ -570,5 +569,237 @@ describe('GET /api/databases/:databaseId/records/:recordId', () => {
             expect(response.status).toBe(404)
             expect(response.body.error).toBe('Record not found')
         })
+    })
+})
+describe('PUT /api/databases/:databaseId/records/:recordId', () => {
+    let testRecordId: number
+
+    beforeEach(async () => {
+        const data = {
+            [nameField.id]: 'Bob',
+            [ageField.id]: 21
+        }
+
+        const response = await postRecord(testDatabase.id, token, data)
+        testRecordId = response.body.id
+    })
+    test('replaces the record data', async () => {
+        const updatedData = {
+            [nameField.id]: 'Alice',
+            [ageField.id]: 25
+        }
+
+        const response = await updateRecordById(testDatabase.id, testRecordId, token, updatedData)
+
+        expect(response.status).toBe(200)
+        expect(response.body.id).toBe(testRecordId)
+        expect(response.body.databaseId).toBe(testDatabase.id)
+        expect(response.body.data).toEqual(updatedData)
+    })
+    test('fails with 401 if user is without authentication', async () => {
+        const updatedData = {
+            [nameField.id]: 'Alice',
+            [ageField.id]: 25
+        }
+
+        const response = await api
+            .put(`/api/databases/${testDatabase.id}/records/${testRecordId}`)
+            .send({ data: updatedData })
+
+        expect(response.status).toBe(401)
+        expect(response.body.error).toBe("Authentication required")
+    })
+    test('fails with 401 if user\'s token is invalid', async () => {
+        const updatedData = {
+            [nameField.id]: 'Alice',
+            [ageField.id]: 25
+        }
+
+        const response = await updateRecordById(testDatabase.id, testRecordId, 'invalid-token', updatedData)
+
+        expect(response.status).toBe(401)
+        expect(response.body.error).toBe("Invalid token")
+    })
+    test('fails with 400 if database ID is invalid', async () => {
+        const updatedData = {
+            [nameField.id]: 'Alice',
+            [ageField.id]: 25
+        }
+
+        const response = await updateRecordById('invalid-id', testRecordId, token, updatedData)
+
+        expect(response.status).toBe(400)
+        expect(response.body.error).toBe("Invalid database ID")
+    })
+    test('fails with 400 if record ID is invalid', async () => {
+        const updatedData = {
+            [nameField.id]: 'Alice',
+            [ageField.id]: 25
+        }
+
+        const response = await updateRecordById(testDatabase.id, 'invalid-id', token, updatedData)
+
+        expect(response.status).toBe(400)
+        expect(response.body.error).toBe("Invalid record ID")
+    })
+    test('fails with 400 if database does not exist', async () => {
+        const updatedData = {
+            [nameField.id]: 'Alice',
+            [ageField.id]: 25
+        }
+
+        const response = await updateRecordById(testDatabase.id + 99, testRecordId, token, updatedData)
+
+        expect(response.status).toBe(404)
+        expect(response.body.error).toBe("Database not found")
+    })
+    test('fails with 404 when accessing another user\'s database', async () => {
+        await User.create({
+            name: 'Test User 2',
+            email: 'test2@example.com',
+            passwordHash: await bcrypt.hash('password456', 10)
+        })
+
+        const loginResponse = await api
+            .post('/api/login')
+            .send({
+                email: 'test2@example.com',
+                password: 'password456'
+            })
+
+        const updatedData = {
+            [nameField.id]: 'Alice',
+            [ageField.id]: 25
+        }
+
+        const response = await updateRecordById(
+            testDatabase.id, 
+            testRecordId, 
+            loginResponse.body.token, 
+            updatedData
+        )
+
+        expect(response.status).toBe(404)
+        expect(response.body.error).toBe("Database not found")
+    })
+    test('fails with 400 if record does not exist', async () => {
+        const updatedData = {
+            [nameField.id]: 'Alice',
+            [ageField.id]: 25
+        }
+
+        const response = await updateRecordById(testDatabase.id, testRecordId + 99, token, updatedData)
+
+        expect(response.status).toBe(404)
+        expect(response.body.error).toBe("Record not found")
+    })
+    test('fails with 404 if user tries to update a record that belongs to another database', async () => {
+        const secondDatabase = await Database.create({
+            name: 'Employees',
+            userId: testDatabase.userId
+        })
+
+        const employeeNameField = await Field.create({
+            databaseId: secondDatabase.id,
+            name: 'Name',
+            type: 'text',
+            required: true
+        })
+
+        const otherData = {
+            [employeeNameField.id]: 'John'
+        }
+
+        const updatedData = {
+            [employeeNameField.id]: 'Bob'
+        }
+
+        const otherRecordResponse = await postRecord(secondDatabase.id, token, otherData)
+
+        const response = await updateRecordById(
+            testDatabase.id, 
+            otherRecordResponse.body.id, 
+            token,
+            updatedData
+        )
+
+        expect(response.status).toBe(404)
+        expect(response.body.error).toBe('Record not found')
+    })
+    test('fails with 400 if record field data is invalid', async () => {
+        const updatedData = {
+            [nameField.id]: 123,
+            [ageField.id]: 25
+        }
+
+        const response = await updateRecordById(testDatabase.id, testRecordId, token, updatedData)
+
+        expect(response.status).toBe(400)
+        expect(response.body.error).toBe(`Field '${nameField.name}' must be text`)
+    })
+    test('fails with 400 if field ID is unknown', async () => {
+        const updatedData = {
+            name: 'Alice',
+            [ageField.id]: 25
+        }
+
+        const response = await updateRecordById(testDatabase.id, testRecordId, token, updatedData)
+
+        expect(response.status).toBe(400)
+        expect(response.body.error).toBe("Unknown field ID 'name'")
+    })
+    test('fails with 400 if record data is missing a required field', async () => {
+        const updatedData = {
+            [ageField.id]: 25
+        }
+
+        const response = await updateRecordById(testDatabase.id, testRecordId, token, updatedData)
+
+        expect(response.status).toBe(400)
+        expect(response.body.error).toBe(`Required field '${nameField.name}' is missing`)
+    })
+    test('fails with 400 if user inputs an invalid date format on a field with a \'date\' type', async () => {
+        let dateField: Field
+
+        dateField = await Field.create({
+            databaseId: testDatabase.id,
+            name: 'Birth Date',
+            type: 'date',
+            required: false
+        })
+        
+        const updatedData = {
+            [nameField.id]: 'Alice',
+            [ageField.id]: 21,
+            [dateField.id]: '02-25-2025'
+        }
+
+        const response = await updateRecordById(testDatabase.id, testRecordId, token, updatedData)
+
+        expect(response.status).toBe(400)
+        expect(response.body.error).toBe('Field \'Birth Date\' must be a date in YYYY-MM-DD format')
+    })
+    test('fails with 400 if database has no fields', async () => {
+        const emptyDatabase = await Database.create({
+            name: 'Empty Database',
+            userId: testDatabase.userId
+        })
+
+        const record = await Record.create({
+            databaseId: emptyDatabase.id,
+            data: {}
+        })
+
+        const response = await api
+            .put(`/api/databases/${emptyDatabase.id}/records/${record.id}`)
+            .set('Authorization', `Bearer ${token}`)
+            .send({
+                data: {}
+            })
+
+        expect(response.status).toBe(400)
+        expect(response.body.error).toBe(
+            'Database must have at least one field before updating records'
+        )
     })
 })
