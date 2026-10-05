@@ -124,3 +124,9 @@ export const patchRecordById = async (
         .set('Authorization', `Bearer ${token}`)
         .send({ data: updatedData })
 }
+
+export const deleteRecord = async (databaseId: number | string, recordId: number | string, token: string) => {
+    return await api
+        .delete(`/api/databases/${databaseId}/records/${recordId}`)
+        .set('Authorization', `Bearer ${token}`)
+}
