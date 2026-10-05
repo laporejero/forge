@@ -839,7 +839,7 @@ describe('PATCH /api/databases/:databaseId/records/:recordId', () => {
             [ageField.id]: 21
         })
     })
-    test('can update multiple fields at one', async () => {
+    test('can update multiple fields at once', async () => {
         const updatedData = {
             [nameField.id]: 'Joey',
             [ageField.id]: 22
@@ -938,7 +938,7 @@ describe('PATCH /api/databases/:databaseId/records/:recordId', () => {
         expect(response.status).toBe(404)
         expect(response.body.error).toBe('Record not found')
     })
-    test('fails with 400 for for invalid outer body', async () => {
+    test('fails with 400 for invalid outer body', async () => {
         const response = await api
         .patch(`/api/databases/${testDatabase.id}/records/${testRecordId}`)
         .set('Authorization', `Bearer ${token}`)
