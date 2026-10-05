@@ -5,7 +5,7 @@ import bcrypt from 'bcrypt'
 import app from '../app'
 import { User, Database, Field, Record } from '../models'
 import { connectToDatabase, sequelize } from '../util/db'
-import { clearTestDatabase, getRecordById, getRecords, patchRecordById, postRecord, updateRecordById } from './testHelpers'
+import { clearTestDatabase, deleteRecord, getRecordById, getRecords, patchRecordById, postRecord, updateRecordById } from './testHelpers'
 
 const api = request(app)
 
@@ -1007,5 +1007,119 @@ describe('PATCH /api/databases/:databaseId/records/:recordId', () => {
         expect(response.body.error).toBe(
             'Database must have at least one field before updating records'
         )
+    })
+})
+describe('PATCH /api/databases/:databaseId/records/:recordId', () => {
+    let testRecordId: number
+
+    beforeEach(async () => {
+        const data = {
+            [nameField.id]: 'Bob',
+            [ageField.id]: 21
+        }
+
+        const response = await postRecord(testDatabase.id, token, data)
+        testRecordId = response.body.id
+    })
+    test('successfully deletes the requested record', async () => {
+        const response = await deleteRecord(testDatabase.id, testRecordId, token)
+
+        expect(response.status).toBe(204)
+        const deletedRecord = await Record.findByPk(testRecordId)
+        expect(deletedRecord).toBeNull()
+    })
+    test('fails with 401 is user is without authentication', async () => {
+        const response = await api
+            .delete(`/api/databases/${testDatabase.id}/records/${testRecordId}`)
+
+        expect(response.status).toBe(401)
+        expect(response.body.error).toBe('Authentication required')
+    })
+    test('fails with 401 is user\'s token is invalid', async () => {
+        const response = await deleteRecord(testDatabase.id, testRecordId, 'invalid-token')
+            
+        expect(response.status).toBe(401)
+        expect(response.body.error).toBe('Invalid token')
+    })
+    test('fails with 400 is database ID is invalid', async () => {
+        const response = await deleteRecord('ivalid-id', testRecordId, token)
+            
+        expect(response.status).toBe(400)
+        expect(response.body.error).toBe('Invalid database ID')
+    })
+    test('fails with 400 is record ID is invalid', async () => {
+        const response = await deleteRecord(testDatabase.id, 'invalid-id', token)
+            
+        expect(response.status).toBe(400)
+        expect(response.body.error).toBe('Invalid record ID')
+    })
+    test('fails with 404 is database does not exist', async () => {
+        const response = await deleteRecord(testDatabase.id + 99, testRecordId, token)
+            
+        expect(response.status).toBe(404)
+        expect(response.body.error).toBe('Database not found')
+    })
+    test('fails with 404 is record does not exist', async () => {
+        const response = await deleteRecord(testDatabase.id, testRecordId + 99, token)
+            
+        expect(response.status).toBe(404)
+        expect(response.body.error).toBe('Record not found')
+    })
+    test('fails with 404 when database belongs to another user', async () => {
+        await User.create({
+            name: 'Test User 2',
+            email: 'test2@example.com',
+            passwordHash: await bcrypt.hash('password456', 10)
+        })
+
+        const loginResponse = await api
+            .post('/api/login')
+            .send({
+                email: 'test2@example.com',
+                password: 'password456'
+            })
+
+        const response = await deleteRecord(testDatabase.id, testRecordId, loginResponse.body.token)
+
+        expect(response.status).toBe(404)
+        expect(response.body.error).toBe('Database not found')
+
+        const record = await Record.findByPk(testRecordId)
+
+        expect(record).not.toBeNull()
+    })
+    test('fails with 404 when record belongs to another database', async () => {
+        const secondDatabase = await Database.create({
+            name: 'Employees',
+            userId: testDatabase.userId
+        })
+
+        const employeeNameField = await Field.create({
+            databaseId: secondDatabase.id,
+            name: 'Name',
+            type: 'text',
+            required: true
+        })
+
+        const otherData = {
+            [employeeNameField.id]: 'John'
+        }
+
+        const otherRecordResponse = await postRecord(
+            secondDatabase.id,
+            token,
+            otherData
+        )
+
+        const otherRecordId = otherRecordResponse.body.id
+
+        const response = await deleteRecord(testDatabase.id, otherRecordId, token)
+
+        expect(response.status).toBe(404)
+        expect(response.body.error).toBe('Record not found')
+
+        const record = await Record.findByPk(otherRecordId)
+
+        expect(record).not.toBeNull()
     })
 })
