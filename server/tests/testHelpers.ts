@@ -112,3 +112,15 @@ export const updateRecordById = async (
         .set('Authorization', `Bearer ${token}`)
         .send({ data: updatedData })
 }
+
+export const patchRecordById = async (
+    databaseId: number | string,
+    recordId: number | string,
+    token: string,
+    updatedData: object
+) => {
+    return api
+        .patch(`/api/databases/${databaseId}/records/${recordId}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ data: updatedData })
+}
