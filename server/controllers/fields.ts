@@ -206,7 +206,7 @@ router.put('/:fieldId',
 router.delete('/:fieldId', 
     tokenExtractor, 
     async (
-        req: Request<{ databaseId: string, fieldId: string }, {}, FieldInput>, 
+        req: Request<{ databaseId: string, fieldId: string }>, 
         res: Response
     ) => {
     const databaseId = parseId(req.params.databaseId)
