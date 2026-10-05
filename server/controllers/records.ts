@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express'
-import { Record, Database, Field } from '../models'
+import { Record, Field } from '../models'
 import tokenExtractor from '../middleware/tokenExtractor'
 import validateBody from '../middleware/validateBody'
 import { recordSchema, RecordInput } from '../schemas/record'
