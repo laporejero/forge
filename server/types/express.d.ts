@@ -1,5 +1,6 @@
 import Database from '../models/database'
 import Record from '../models/record'
+import Field from '../models/field'
 
 export interface DecodedToken {
     id: number
@@ -11,6 +12,7 @@ declare global {
             decodedToken?: DecodedToken
             database?: Database
             record?: Record
+            field?: Field
         }
     }
 }
