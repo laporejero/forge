@@ -3,9 +3,9 @@ import { Record, Field } from '../models'
 import tokenExtractor from '../middleware/tokenExtractor'
 import validateBody from '../middleware/validateBody'
 import { recordSchema, RecordInput } from '../schemas/record'
-import { parseId } from '../util/parseId'
 import { validateRecordData } from '../util/validateRecordData'
 import requireDatabaseOwnership from '../middleware/requireDatabaseOwnership'
+import requireRecord from '../middleware/requireRecord'
 
 const router = Router({ mergeParams: true })
 
@@ -65,58 +65,26 @@ router.get('/',
 router.get('/:recordId',
     tokenExtractor,
     requireDatabaseOwnership,
+    requireRecord,
     async (
         req: Request<{ databaseId: string, recordId: string }>,
         res: Response
-    ) => {
-    const recordId = parseId(req.params.recordId)
-    const databaseId = req.database!.id
-
-    if (!recordId) {
-        return res.status(400).json({
-            error: 'Invalid record ID'
-        })
+    ) => {    
+        return res.status(200).json(req.record)
     }
-
-    const record = await Record.findOne({
-        where: { databaseId, id: recordId }
-    })
-
-    if (!record) {
-        return res.status(404).json({
-            error: 'Record not found'
-        })
-    }
-
-    return res.status(200).json(record)
-})
+)
 
 router.put('/:recordId',
     tokenExtractor,
     requireDatabaseOwnership,
+    requireRecord,
     validateBody(recordSchema),
     async (
         req: Request<{databaseId : string, recordId: string}, {}, RecordInput>,
         res: Response
     ) => {
     const databaseId = req.database!.id
-    const recordId = parseId(req.params.recordId)
-
-    if (!recordId) {
-        return res.status(400).json({
-            error: 'Invalid record ID'
-        })
-    }
-
-    const record = await Record.findOne({
-        where: { databaseId, id: recordId }
-    })
-
-    if (!record) {
-        return res.status(404).json({
-            error: 'Record not found'
-        })
-    }
+    const record = req.record!
 
     const fields = await Field.findAll({
         where: { databaseId }
@@ -148,29 +116,14 @@ router.put('/:recordId',
 router.patch('/:recordId',
     tokenExtractor,
     requireDatabaseOwnership,
+    requireRecord,
     validateBody(recordSchema),
     async (
         req: Request<{databaseId: string, recordId: string}, {}, RecordInput>,
         res: Response
     ) => {
     const databaseId = req.database!.id
-    const recordId = parseId(req.params.recordId)
-
-    if (!recordId) {
-        return res.status(400).json({
-            error: 'Invalid record ID'
-        })
-    }
-
-    const record = await Record.findOne({
-        where: { databaseId, id: recordId }
-    })
-
-    if (!record) {
-        return res.status(404).json({
-            error: 'Record not found'
-        })
-    }
+    const record = req.record!
 
     const fields = await Field.findAll({
         where: { databaseId }
@@ -206,28 +159,12 @@ router.patch('/:recordId',
 router.delete('/:recordId', 
     tokenExtractor, 
     requireDatabaseOwnership,
+    requireRecord,
     async (
         req: Request<{databaseId: string, recordId: string}>, 
         res: Response
     ) => {
-    const databaseId = req.database!.id
-    const recordId = parseId(req.params.recordId)
-
-    if (!recordId) {
-        return res.status(400).json({
-            error: 'Invalid record ID'
-        })
-    }
-
-    const record = await Record.findOne({
-        where: { databaseId, id: recordId }
-    })
-
-    if (!record) {
-        return res.status(404).json({
-            error: 'Record not found'
-        })
-    }
+    const record = req.record!
 
     await record.destroy()
 
