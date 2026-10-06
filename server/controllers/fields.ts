@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express'
 import { Field, Database } from '../models'
 import tokenExtractor from '../middleware/tokenExtractor'
 import validateBody from '../middleware/validateBody'
+import requireDatabaseOwnership from '../middleware/requireDatabaseOwnership'
 import { fieldSchema, FieldInput } from '../schemas/field'
 import { parseId } from '../util/parseId'
 import { Op } from 'sequelize'
@@ -10,31 +11,15 @@ const router = Router({ mergeParams: true })
 
 router.post('/',
     tokenExtractor,
+    requireDatabaseOwnership,
     validateBody(fieldSchema),
     async (
         req: Request<{ databaseId: string }, {}, FieldInput>,
         res: Response
     ) => {
-    const databaseId = parseId(req.params.databaseId)
-    const userId = req.decodedToken!.id
+    const databaseId = req.database!.id
 
     const { name, type, required } = req.body
-
-    if (!databaseId) {
-        return res.status(400).json({
-            error: 'Invalid database ID'
-        })
-    }
-
-    const database = await Database.findOne({
-        where: { id: databaseId, userId }
-    })
-
-    if (!database) {
-        return res.status(404).json({
-            error: 'Database not found'
-        })
-    }
 
     const existingField = await Field.findOne({
         where: { name, databaseId }
@@ -58,28 +43,12 @@ router.post('/',
 
 router.get('/', 
     tokenExtractor, 
+    requireDatabaseOwnership,
     async (
         req: Request<{ databaseId: string }>, 
         res: Response
     ) => {
-    const databaseId = parseId(req.params.databaseId)
-    const userId = req.decodedToken!.id
-
-    if (!databaseId) {
-        return res.status(400).json({
-            error: 'Invalid database ID'
-        })
-    }
-
-    const database = await Database.findOne({
-        where: { id: databaseId, userId }
-    })
-
-    if (!database) {
-        return res.status(404).json({
-            error: 'Database not found'
-        })
-    }
+    const databaseId = req.database!.id
 
     const fields = await Field.findAll({
         where: { databaseId },
@@ -92,33 +61,17 @@ router.get('/',
 
 router.get('/:fieldId', 
     tokenExtractor,
+    requireDatabaseOwnership,
     async (
         req: Request<{ databaseId: string, fieldId: string }>,
         res: Response
     ) => {
-    const databaseId = parseId(req.params.databaseId)
+    const databaseId = req.database!.id
     const fieldId = parseId(req.params.fieldId)
-    const userId = req.decodedToken!.id
-
-    if (!databaseId) {
-        return res.status(400).json({
-            error: 'Invalid database ID'
-        })
-    }
 
     if (!fieldId) {
         return res.status(400).json({
             error: 'Invalid field ID'
-        })
-    }
-
-    const database = await Database.findOne({
-        where: { id: databaseId, userId }
-    })
-
-    if (!database) {
-        return res.status(404).json({
-            error: 'Database not found'
         })
     }
 
@@ -137,34 +90,18 @@ router.get('/:fieldId',
 
 router.put('/:fieldId',
     tokenExtractor,
+    requireDatabaseOwnership,
     validateBody(fieldSchema),
     async (
         req: Request<{ databaseId: string, fieldId: string }, {}, FieldInput>,
         res: Response
     ) => {
-    const databaseId = parseId(req.params.databaseId)
+    const databaseId = req.database!.id
     const fieldId = parseId(req.params.fieldId)
-    const userId = req.decodedToken!.id
-
-    if (!databaseId) {
-        return res.status(400).json({
-            error: 'Invalid database ID'
-        })
-    }
 
     if (!fieldId) {
         return res.status(400).json({
             error: 'Invalid field ID'
-        })
-    }
-
-    const database = await Database.findOne({
-        where: { id: databaseId, userId }
-    })
-
-    if (!database) {
-        return res.status(404).json({
-            error: 'Database not found'
         })
     }
 
@@ -205,33 +142,17 @@ router.put('/:fieldId',
 
 router.delete('/:fieldId', 
     tokenExtractor, 
+    requireDatabaseOwnership,
     async (
         req: Request<{ databaseId: string, fieldId: string }>, 
         res: Response
     ) => {
-    const databaseId = parseId(req.params.databaseId)
+    const databaseId = req.database!.id
     const fieldId = parseId(req.params.fieldId)
-    const userId = req.decodedToken!.id
-
-    if (!databaseId) {
-        return res.status(400).json({
-            error: 'Invalid database ID'
-        })
-    }
 
     if (!fieldId) {
         return res.status(400).json({
             error: 'Invalid field ID'
-        })
-    }
-
-    const database = await Database.findOne({
-        where: { id: databaseId, userId }
-    })
-
-    if (!database) {
-        return res.status(404).json({
-            error: 'Database not found'
         })
     }
 
