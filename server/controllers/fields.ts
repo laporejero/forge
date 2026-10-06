@@ -4,8 +4,8 @@ import tokenExtractor from '../middleware/tokenExtractor'
 import validateBody from '../middleware/validateBody'
 import requireDatabaseOwnership from '../middleware/requireDatabaseOwnership'
 import { fieldSchema, FieldInput } from '../schemas/field'
-import { parseId } from '../util/parseId'
 import { Op } from 'sequelize'
+import requireField from '../middleware/requireField'
 
 const router = Router({ mergeParams: true })
 
@@ -62,58 +62,26 @@ router.get('/',
 router.get('/:fieldId', 
     tokenExtractor,
     requireDatabaseOwnership,
+    requireField,
     async (
         req: Request<{ databaseId: string, fieldId: string }>,
         res: Response
     ) => {
-    const databaseId = req.database!.id
-    const fieldId = parseId(req.params.fieldId)
-
-    if (!fieldId) {
-        return res.status(400).json({
-            error: 'Invalid field ID'
-        })
+        return res.status(200).json(req.field)
     }
-
-    const field = await Field.findOne({
-        where: { databaseId, id: fieldId },
-    })
-
-    if (!field) {
-        return res.status(404).json({
-            error: 'Field not found'
-        })
-    }
-
-    return res.status(200).json(field)
-})
+)
 
 router.put('/:fieldId',
     tokenExtractor,
     requireDatabaseOwnership,
+    requireField,
     validateBody(fieldSchema),
     async (
         req: Request<{ databaseId: string, fieldId: string }, {}, FieldInput>,
         res: Response
     ) => {
     const databaseId = req.database!.id
-    const fieldId = parseId(req.params.fieldId)
-
-    if (!fieldId) {
-        return res.status(400).json({
-            error: 'Invalid field ID'
-        })
-    }
-
-    const field = await Field.findOne({
-        where: { databaseId, id: fieldId },
-    })
-
-    if (!field) {
-        return res.status(404).json({
-            error: 'Field not found'
-        })
-    }
+    const field = req.field!
 
     const { name, type, required } = req.body
 
@@ -121,7 +89,7 @@ router.put('/:fieldId',
         where: { 
             name, 
             databaseId, 
-            id: { [Op.ne]: fieldId } 
+            id: { [Op.ne]: field.id } 
         }
     })
 
@@ -143,28 +111,12 @@ router.put('/:fieldId',
 router.delete('/:fieldId', 
     tokenExtractor, 
     requireDatabaseOwnership,
+    requireField,
     async (
         req: Request<{ databaseId: string, fieldId: string }>, 
         res: Response
     ) => {
-    const databaseId = req.database!.id
-    const fieldId = parseId(req.params.fieldId)
-
-    if (!fieldId) {
-        return res.status(400).json({
-            error: 'Invalid field ID'
-        })
-    }
-
-    const field = await Field.findOne({
-        where: { databaseId, id: fieldId },
-    })
-
-    if (!field) {
-        return res.status(404).json({
-            error: 'Field not found'
-        })
-    }
+    const field = req.field!
 
     await field.destroy()
 
