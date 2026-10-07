@@ -1,11 +1,12 @@
 import { Model, DataTypes } from 'sequelize'
 import { sequelize } from '../util/db'
+import { FieldType } from '../schemas/field'
 
 class Field extends Model {
     declare id: number
     declare databaseId: number
     declare name: string
-    declare type: string
+    declare type: FieldType
     declare required: boolean
 }
 
