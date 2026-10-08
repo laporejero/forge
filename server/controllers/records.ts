@@ -6,6 +6,10 @@ import { recordSchema, RecordInput } from '../schemas/record'
 import { validateRecordData } from '../util/validateRecordData'
 import requireDatabaseOwnership from '../middleware/requireDatabaseOwnership'
 import requireRecord from '../middleware/requireRecord'
+import { filterQuerySchema } from '../schemas/filterQuery'
+import { parseId } from '../util/parseId'
+import { buildFilterCondition, validateFilter } from '../util/queryEngine'
+import { Op } from 'sequelize'
 
 const router = Router({ mergeParams: true })
 
@@ -53,9 +57,55 @@ router.get('/',
         res: Response
     ) => {
     const databaseId = req.database!.id
+    let filterCondition
+    
+    if (Object.keys(req.query).length > 0) {
+        const result = filterQuerySchema.safeParse(req.query)
+    
+        if (!result.success) {
+            return res.status(400).json({
+                error: 'Invalid filter query'
+            })
+        }
+
+        const fieldId = parseId(result.data.field)
+
+        if (!fieldId) {
+            return res.status(400).json({
+                error: 'Invalid field ID'
+            })
+        }
+
+        const field = await Field.findOne({
+            where: { id: fieldId, databaseId }
+        })
+
+        if (!field) {
+            return res.status(404).json({
+                error: 'Field not found'
+            })
+        }
+
+        const validationResult = validateFilter(result.data, field)
+
+        if (!validationResult.valid) {
+            return res.status(400).json({
+                error: validationResult.error
+            })
+        }
+
+        filterCondition = buildFilterCondition(
+            result.data,
+            field,
+            validationResult.value
+        )
+    }
 
     const records: Record[] = await Record.findAll({
-        where: { databaseId },
+        where: { 
+            databaseId,
+            ...(filterCondition ? { [Op.and]: [filterCondition] } : {})
+        },
         order: [['id', 'ASC']]
     })
 

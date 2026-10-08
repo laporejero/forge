@@ -1,5 +1,6 @@
-import Field from "../models/field"
-import { FilterQuery } from "../schemas/filterQuery"
+import Field from '../models/field'
+import { FilterQuery } from '../schemas/filterQuery'
+import { literal, cast, Op, where } from 'sequelize'
 
 type ConversionResult =
     | { valid: true; value: string | number | boolean }
@@ -10,6 +11,68 @@ export const allowedOperators = {
     text: ['eq', 'contains'],
     boolean: ['eq'],
     date: ['eq', 'gt', 'gte', 'lt', 'lte']
+}
+
+export const operatorToSql = {
+    eq: '=',
+    gt: '>',
+    gte: '>=',
+    lt: '<',
+    lte: '<='
+}
+
+export const fieldTypeToSql = {
+    text: 'text',
+    number: 'numeric',
+    boolean: 'boolean',
+    date: 'date'
+}
+
+export const operatorToSequelize = {
+    eq: Op.eq,
+    gt: Op.gt,
+    gte: Op.gte,
+    lt: Op.lt,
+    lte: Op.lte
+}
+
+export const buildJsonExpression = (field: Field) => {
+    return literal(`"data"->>'${field.id}'`)
+}
+
+export const buildTypedExpression = (field: Field) => {
+    const jsonExpression = buildJsonExpression(field)
+
+    return cast(
+        jsonExpression,
+        fieldTypeToSql[field.type]
+    )
+}
+
+export const escapeLikePattern = (value: string): string => {
+    return value.replace(/[\\%_]/g, '\\$&')
+}
+
+export const buildFilterCondition = (
+    query: FilterQuery,
+    field: Field,
+    value: string | number | boolean
+) => {
+    if (query.operator === 'contains') {
+        const escapedValue = escapeLikePattern(String(value))
+
+        return where(buildJsonExpression(field), { 
+            [Op.iLike]: `%${escapedValue}%` 
+        })
+    }
+
+    const expression = buildTypedExpression(field)
+
+    const operator = operatorToSequelize[query.operator]
+
+    return where(expression, {
+        [operator]: value
+    })
 }
 
 export const isOperatorAllowed = (
@@ -97,7 +160,7 @@ export const convertFilterValue = (query: FilterQuery, field: Field): Conversion
     }
 }
 
-export const validateFilter = (query: FilterQuery, field: Field) => {
+export const validateFilter = (query: FilterQuery, field: Field): ConversionResult => {
     const operatorIsAllowed = isOperatorAllowed(query, field)
 
     if (!operatorIsAllowed) {
