@@ -364,6 +364,79 @@ describe('GET /api/databases/:databaseId/records', () => {
 
             expect(ids).toEqual([...ids].sort((a, b) => a - b))
         })
+        test('filters records by number field using gte', async () => {
+            const response = await api
+                .get(`/api/databases/${testDatabase.id}/records`)
+                .set('Authorization', `Bearer ${token}`)
+                .query({
+                    field: String(ageField.id),
+                    operator: 'gte',
+                    value: '21'
+                })
+
+            expect(response.status).toBe(200)
+            expect(response.body).toHaveLength(2)
+
+            const ages = response.body.map(
+                (record: { data: { [key: string]: number } }) =>
+                    record.data[String(ageField.id)]
+            )
+
+            expect(ages).toEqual([21, 22])
+        })
+        test('filters records by text field using contains', async () => {
+            const response = await api
+                .get(`/api/databases/${testDatabase.id}/records`)
+                .set('Authorization', `Bearer ${token}`)
+                .query({
+                    field: String(nameField.id),
+                    operator: 'contains',
+                    value: 'joey'
+                })
+
+            expect(response.status).toBe(200)
+            expect(response.body).toHaveLength(1)
+            expect(response.body[0].data[String(nameField.id)]).toBe('Joey')
+        })
+        test('fails with 400 if operator is not supported', async () => {
+            const response = await api
+                .get(`/api/databases/${testDatabase.id}/records`)
+                .set('Authorization', `Bearer ${token}`)
+                .query({
+                    field: String(ageField.id),
+                    operator: 'contains',
+                    value: '21'
+                })
+
+            expect(response.status).toBe(400)
+            expect(response.body.error).toBe("Operator 'contains' is not supported for number fields")
+        })
+        test('fails with 400 if operator is invalid', async () => {
+            const response = await api
+                .get(`/api/databases/${testDatabase.id}/records`)
+                .set('Authorization', `Bearer ${token}`)
+                .query({
+                    field: String(ageField.id),
+                    operator: 'invalid',
+                    value: '21'
+                })
+
+            expect(response.status).toBe(400)
+            expect(response.body.error).toBe("Invalid filter query")
+        })
+        test('fails with 404 if field ID is unknown', async () => {
+            const response = await api
+                .get(`/api/databases/${testDatabase.id}/records`)
+                .set('Authorization', `Bearer ${token}`)
+                .query({
+                    field: String(ageField.id + 99),
+                    operator: 'gte',
+                    value: '21'
+                })
+
+            expect(response.status).toBe(404)
+            expect(response.body.error).toBe("Field not found")
+        })
     })
     describe('when database has no records', () => {
         test('returns []', async () => {
