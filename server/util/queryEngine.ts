@@ -49,6 +49,14 @@ export const buildTypedExpression = (field: Field) => {
     )
 }
 
+export const buildSortExpression = (field: Field) => {
+    return buildTypedExpression(field)
+}
+
+export const buildSortDirection = (sortOrder: 'asc' | 'desc') => {
+    return sortOrder.toUpperCase() as 'ASC' | 'DESC'
+}
+
 export const escapeLikePattern = (value: string): string => {
     return value.replace(/[\\%_]/g, '\\$&')
 }

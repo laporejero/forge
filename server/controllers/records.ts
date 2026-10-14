@@ -7,8 +7,9 @@ import { validateRecordData } from '../util/validateRecordData'
 import requireDatabaseOwnership from '../middleware/requireDatabaseOwnership'
 import requireRecord from '../middleware/requireRecord'
 import { filterQuerySchema } from '../schemas/filterQuery'
+import { sortQuerySchema } from '../schemas/sortQuery'
 import { parseId } from '../util/parseId'
-import { buildFilterCondition, validateFilter } from '../util/queryEngine'
+import { buildFilterCondition, buildSortDirection, buildSortExpression, validateFilter } from '../util/queryEngine'
 import { Op } from 'sequelize'
 
 const router = Router({ mergeParams: true })
@@ -58,8 +59,51 @@ router.get('/',
     ) => {
     const databaseId = req.database!.id
     let filterCondition
+    let sortExpression
+    let sortDirection: 'ASC' | 'DESC' = 'ASC'
+
+    if (req.query.sortField !== undefined) {
+        const result = sortQuerySchema.safeParse({
+            sortField: req.query.sortField,
+            sortOrder: req.query.sortOrder
+        })
+
+        if (!result.success) {
+            return res.status(400).json({
+                error: 'Invalid sort query'
+            })
+        }
+
+        const sortFieldId = parseId(result.data.sortField)
+
+        if (!sortFieldId) {
+            return res.status(400).json({
+                error: 'Invalid field ID'
+            })
+        }
+
+        const sortField = await Field.findOne({
+            where: {
+                id: sortFieldId,
+                databaseId
+            }
+        })
+
+        if (!sortField) {
+            return res.status(404).json({
+                error: 'Field not found'
+            })
+        }
+
+        sortExpression = buildSortExpression(sortField)
+        sortDirection = buildSortDirection(result.data.sortOrder)
+    }
     
-    if (Object.keys(req.query).length > 0) {
+    if (
+        req.query.field !== undefined ||
+        req.query.operator !== undefined ||
+        req.query.value !== undefined
+    ) {
         const result = filterQuerySchema.safeParse(req.query)
     
         if (!result.success) {
@@ -106,7 +150,12 @@ router.get('/',
             databaseId,
             ...(filterCondition ? { [Op.and]: [filterCondition] } : {})
         },
-        order: [['id', 'ASC']]
+        order: sortExpression
+            ? [
+                [sortExpression, `${sortDirection} NULLS LAST`],
+                ['id', 'ASC']
+            ]
+            : [['id', 'ASC']]
     })
 
     return res.status(200).json(records)
