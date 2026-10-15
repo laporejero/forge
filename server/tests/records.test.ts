@@ -437,6 +437,147 @@ describe('GET /api/databases/:databaseId/records', () => {
             expect(response.status).toBe(404)
             expect(response.body.error).toBe("Field not found")
         })
+        test('sorts records by number field ascending', async () => {
+            const response = await api
+                .get(`/api/databases/${testDatabase.id}/records`)
+                .set('Authorization', `Bearer ${token}`)
+                .query({
+                    sortField: String(ageField.id),
+                    sortOrder: 'asc'
+                })
+
+            expect(response.status).toBe(200)
+
+            const ages = response.body.map((record: { data: { [key: string]: number } }) =>
+                record.data[String(ageField.id)]
+            )
+
+            expect(ages).toEqual([20, 21, 22])
+        })
+        test('sorts records by number field descending', async () => {
+            const response = await api
+                .get(`/api/databases/${testDatabase.id}/records`)
+                .set('Authorization', `Bearer ${token}`)
+                .query({
+                    sortField: String(ageField.id),
+                    sortOrder: 'desc'
+                })
+
+            expect(response.status).toBe(200)
+
+            const ages = response.body.map((record: { data: { [key: string]: number } }) =>
+                record.data[String(ageField.id)]
+            )
+
+            expect(ages).toEqual([22, 21, 20])
+        })
+        test('sorts records by text field ascending', async () => {
+            const response = await api
+                .get(`/api/databases/${testDatabase.id}/records`)
+                .set('Authorization', `Bearer ${token}`)
+                .query({
+                    sortField: String(nameField.id),
+                    sortOrder: 'asc'
+                })
+
+            expect(response.status).toBe(200)
+
+            const names = response.body.map((record: { data: { [key: string]: string } }) =>
+                record.data[String(nameField.id)]
+            )
+
+            expect(names).toEqual(['Alice', 'Bob', 'Joey'])
+        })
+        test('missing non-required field values are always last', async () => {
+            await postRecord(testDatabase.id, token, {
+                [nameField.id]: 'Sally'
+            })
+
+            for (const sortOrder of ['asc', 'desc']) {
+                const response = await api
+                    .get(`/api/databases/${testDatabase.id}/records`)
+                    .set('Authorization', `Bearer ${token}`)
+                    .query({
+                        sortField: String(ageField.id),
+                        sortOrder
+                    })
+
+                expect(response.status).toBe(200)
+
+                const names = response.body.map(
+                    (record: { data: { [key: string]: string } }) =>
+                        record.data[String(nameField.id)]
+                )
+
+                const expectedNames = sortOrder === 'asc'
+                    ? ['Joey', 'Bob', 'Alice', 'Sally']
+                    : ['Alice', 'Bob', 'Joey', 'Sally']
+
+                expect(names).toEqual(expectedNames)
+            }
+        })
+        test('sorting defaults to ascending if sortOrder is omitted', async () => {
+            const response = await api
+                .get(`/api/databases/${testDatabase.id}/records`)
+                .set('Authorization', `Bearer ${token}`)
+                .query({
+                    sortField: String(ageField.id),
+                })
+
+            expect(response.status).toBe(200)
+
+            const ages = response.body.map((record: { data: { [key: string]: number } }) =>
+                record.data[String(ageField.id)]
+            )
+
+            expect(ages).toEqual([20, 21, 22])
+        })
+        test('filters and sorts records together', async () => {
+            const response = await api
+                .get(`/api/databases/${testDatabase.id}/records`)
+                .set('Authorization', `Bearer ${token}`)
+                .query({
+                    field: String(ageField.id),
+                    operator: 'gte',
+                    value: '21',
+                    sortField: String(ageField.id),
+                    sortOrder: 'desc'
+                })
+
+            expect(response.status).toBe(200)
+            expect(response.body).toHaveLength(2)
+
+            const ages = response.body.map(
+                (record: { data: { [key: string]: number } }) =>
+                    record.data[String(ageField.id)]
+            )
+
+            expect(ages).toEqual([22, 21])
+        })
+        test('fails with 400 if sortField is invalid', async () => {
+            const response = await api
+                .get(`/api/databases/${testDatabase.id}/records`)
+                .set('Authorization', `Bearer ${token}`)
+                .query({
+                    sortField: 'invalid',
+                    sortOrder: 'asc'
+                })
+
+            expect(response.status).toBe(400)
+            expect(response.body.error).toBe('Invalid field ID')
+        })
+        test('fails with 404 if sortField does not exist', async () => {
+            const response = await api
+                .get(`/api/databases/${testDatabase.id}/records`)
+                .set('Authorization', `Bearer ${token}`)
+                .query({
+                    sortField: String(ageField.id + 99),
+                    sortOrder: 'asc'
+                })
+
+            expect(response.status).toBe(404)
+            expect(response.body.error).toBe('Field not found')
+        })
     })
     describe('when database has no records', () => {
         test('returns []', async () => {
