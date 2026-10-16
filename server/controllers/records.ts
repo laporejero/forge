@@ -70,7 +70,9 @@ router.get('/',
 
     if (!paginationResult.success) {
         return res.status(400).json({
-            error: 'Invalid query parameters for page or limit.'
+            errors: paginationResult.error.issues.map(
+                issue => issue.message
+            )
         })
     }
 
