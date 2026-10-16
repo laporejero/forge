@@ -11,6 +11,7 @@ import { sortQuerySchema } from '../schemas/sortQuery'
 import { parseId } from '../util/parseId'
 import { buildFilterCondition, buildSortDirection, buildSortExpression, validateFilter } from '../util/queryEngine'
 import { Op } from 'sequelize'
+import { paginationQuerySchema } from '../schemas/paginationQuery'
 
 const router = Router({ mergeParams: true })
 
@@ -61,6 +62,20 @@ router.get('/',
     let filterCondition
     let sortExpression
     let sortDirection: 'ASC' | 'DESC' = 'ASC'
+
+    const paginationResult = paginationQuerySchema.safeParse({
+        page: req.query.page,
+        limit: req.query.limit
+    })
+
+    if (!paginationResult.success) {
+        return res.status(400).json({
+            error: 'Invalid query parameters for page or limit.'
+        })
+    }
+
+    const { page, limit } = paginationResult.data
+    const offset = (page - 1) * limit
 
     if (req.query.sortField !== undefined) {
         const result = sortQuerySchema.safeParse({
@@ -145,20 +160,36 @@ router.get('/',
         )
     }
 
+    const where = { 
+        databaseId, 
+        ...(filterCondition ? { [Op.and]: [filterCondition] } : {}) 
+    }
+
     const records: Record[] = await Record.findAll({
-        where: { 
-            databaseId,
-            ...(filterCondition ? { [Op.and]: [filterCondition] } : {})
-        },
+        where,
         order: sortExpression
             ? [
                 [sortExpression, `${sortDirection} NULLS LAST`],
                 ['id', 'ASC']
             ]
-            : [['id', 'ASC']]
+            : [['id', 'ASC']],
+        limit,
+        offset
     })
 
-    return res.status(200).json(records)
+    const total = await Record.count({ where })
+
+    const totalPages = Math.ceil(total / limit)
+
+    return res.status(200).json({
+        data: records,
+        pagination: {
+            page,
+            limit,
+            total,
+            totalPages
+        }
+    })
 })
 
 router.get('/:recordId',
