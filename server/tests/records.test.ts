@@ -333,9 +333,9 @@ describe('GET /api/databases/:databaseId/records', () => {
             const response = await getRecords(testDatabase.id, token)
             
             expect(response.status).toBe(200)
-            expect(response.body).toHaveLength(3)
+            expect(response.body.data).toHaveLength(3)
 
-            expect(response.body).toEqual(
+            expect(response.body.data).toEqual(
                 expect.arrayContaining([
                     expect.objectContaining({ 
                         data: expect.objectContaining({
@@ -360,7 +360,7 @@ describe('GET /api/databases/:databaseId/records', () => {
 
             expect(response.status).toBe(200)
 
-            const ids = response.body.map((record: Record) => record.id)
+            const ids = response.body.data.map((record: Record) => record.id)
 
             expect(ids).toEqual([...ids].sort((a, b) => a - b))
         })
@@ -375,9 +375,9 @@ describe('GET /api/databases/:databaseId/records', () => {
                 })
 
             expect(response.status).toBe(200)
-            expect(response.body).toHaveLength(2)
+            expect(response.body.data).toHaveLength(2)
 
-            const ages = response.body.map(
+            const ages = response.body.data.map(
                 (record: { data: { [key: string]: number } }) =>
                     record.data[String(ageField.id)]
             )
@@ -395,8 +395,8 @@ describe('GET /api/databases/:databaseId/records', () => {
                 })
 
             expect(response.status).toBe(200)
-            expect(response.body).toHaveLength(1)
-            expect(response.body[0].data[String(nameField.id)]).toBe('Joey')
+            expect(response.body.data).toHaveLength(1)
+            expect(response.body.data[0].data[String(nameField.id)]).toBe('Joey')
         })
         test('fails with 400 if operator is not supported', async () => {
             const response = await api
@@ -448,7 +448,7 @@ describe('GET /api/databases/:databaseId/records', () => {
 
             expect(response.status).toBe(200)
 
-            const ages = response.body.map((record: { data: { [key: string]: number } }) =>
+            const ages = response.body.data.map((record: { data: { [key: string]: number } }) =>
                 record.data[String(ageField.id)]
             )
 
@@ -465,7 +465,7 @@ describe('GET /api/databases/:databaseId/records', () => {
 
             expect(response.status).toBe(200)
 
-            const ages = response.body.map((record: { data: { [key: string]: number } }) =>
+            const ages = response.body.data.map((record: { data: { [key: string]: number } }) =>
                 record.data[String(ageField.id)]
             )
 
@@ -482,7 +482,7 @@ describe('GET /api/databases/:databaseId/records', () => {
 
             expect(response.status).toBe(200)
 
-            const names = response.body.map((record: { data: { [key: string]: string } }) =>
+            const names = response.body.data.map((record: { data: { [key: string]: string } }) =>
                 record.data[String(nameField.id)]
             )
 
@@ -504,7 +504,7 @@ describe('GET /api/databases/:databaseId/records', () => {
 
                 expect(response.status).toBe(200)
 
-                const names = response.body.map(
+                const names = response.body.data.map(
                     (record: { data: { [key: string]: string } }) =>
                         record.data[String(nameField.id)]
                 )
@@ -526,7 +526,7 @@ describe('GET /api/databases/:databaseId/records', () => {
 
             expect(response.status).toBe(200)
 
-            const ages = response.body.map((record: { data: { [key: string]: number } }) =>
+            const ages = response.body.data.map((record: { data: { [key: string]: number } }) =>
                 record.data[String(ageField.id)]
             )
 
@@ -545,9 +545,9 @@ describe('GET /api/databases/:databaseId/records', () => {
                 })
 
             expect(response.status).toBe(200)
-            expect(response.body).toHaveLength(2)
+            expect(response.body.data).toHaveLength(2)
 
-            const ages = response.body.map(
+            const ages = response.body.data.map(
                 (record: { data: { [key: string]: number } }) =>
                     record.data[String(ageField.id)]
             )
@@ -584,7 +584,7 @@ describe('GET /api/databases/:databaseId/records', () => {
             const response = await getRecords(testDatabase.id, token)
 
             expect(response.status).toBe(200)
-            expect(response.body).toEqual([])
+            expect(response.body.data).toEqual([])
         })
     })
     describe('when database is invalid or inaccessible', () => {
@@ -646,9 +646,7 @@ describe('GET /api/databases/:databaseId/records', () => {
                 required: true
             })
 
-            const otherData = {
-                [employeeNameField.id]: 'John'
-            }
+            const otherData = { [employeeNameField.id]: 'John' }
 
             const otherRecordResponse = await postRecord(
                 secondDatabase.id,
@@ -656,14 +654,11 @@ describe('GET /api/databases/:databaseId/records', () => {
                 otherData
             )
 
-            const response = await getRecords(
-                testDatabase.id,
-                token
-            )
+            const response = await getRecords(testDatabase.id, token)
 
             expect(response.status).toBe(200)
 
-            const returnedIds = response.body.map(
+            const returnedIds = response.body.data.map(
                 (record: Record) => record.id
             )
 
