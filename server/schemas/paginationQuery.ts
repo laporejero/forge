@@ -1,12 +1,12 @@
 import { z } from 'zod'
 
 export const paginationQuerySchema = z.object({
-    page: z.coerce.number()
+    page: z.coerce.number({ error: 'Page must be a valid number' })
         .int("Page must be a whole number")
         .positive("Page must be greater than 0")
         .default(1),
         
-    limit: z.coerce.number()
+    limit: z.coerce.number({ error: 'Limit must be a valid number' })
         .int("Limit must be a whole number")
         .min(1, "Limit must be at least 1")
         .max(100, "Limit cannot exceed 100")
