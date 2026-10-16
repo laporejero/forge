@@ -578,6 +578,18 @@ describe('GET /api/databases/:databaseId/records', () => {
             expect(response.status).toBe(404)
             expect(response.body.error).toBe('Field not found')
         })
+        test('uses default pagination when no parameters are provided', async () => {
+            const response = await getRecords(testDatabase.id, token)
+
+            expect(response.status).toBe(200)
+            expect(response.body.data).toHaveLength(3)
+            expect(response.body.pagination).toEqual({
+                page: 1,
+                limit: 20,
+                total: 3,
+                totalPages: 1
+            })
+        })
     })
     describe('when database has no records', () => {
         test('returns []', async () => {

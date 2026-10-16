@@ -195,7 +195,7 @@ describe('POST /api/databases/:databaseId/fields', () => {
             .expect(400)
             .expect('Content-Type', /application\/json/)
 
-        expect(response.body.error).toBe('Invalid field name')
+        expect(response.body.errors).toContain('Invalid field name')
     })
     test('fails with 400 if field type is invalid', async () => {
         const newField = {
@@ -211,7 +211,7 @@ describe('POST /api/databases/:databaseId/fields', () => {
             .expect(400)
             .expect('Content-Type', /application\/json/)
 
-        expect(response.body.error).toBe('Field type must be text, number, boolean, or date')
+        expect(response.body.errors).toContain('Field type must be text, number, boolean, or date')
     })
     test('fails with 400 if field required is not boolean', async () => {
         const newField = {
@@ -227,7 +227,7 @@ describe('POST /api/databases/:databaseId/fields', () => {
             .expect(400)
             .expect('Content-Type', /application\/json/)
 
-        expect(response.body.error).toBe('Required must be either true or false')
+        expect(response.body.errors).toContain('Required must be either true or false')
     })
     test('fails with 409 if field name already exists in the database', async () => {
         const newField = {
@@ -687,7 +687,7 @@ describe('PUT /api/databases/:databaseId/fields/:fieldId', () => {
                 const response = await updateFieldById(testDatabase.id, fieldId, token, updatedField)
 
                 expect(response.status).toBe(400)
-                expect(response.body.error).toBe('Field name is required')
+                expect(response.body.errors).toContain('Field name is required')
             })
             test('fails with 400 if name is invalid', async () => {
                 const updatedField = {
@@ -699,7 +699,7 @@ describe('PUT /api/databases/:databaseId/fields/:fieldId', () => {
                 const response = await updateFieldById(testDatabase.id, fieldId, token, updatedField)
 
                 expect(response.status).toBe(400)
-                expect(response.body.error).toBe('Invalid field name')
+                expect(response.body.errors).toContain('Invalid field name')
             })
             test('fails with 400 if user inputs an unsupported field type', async () => {
                 const updatedField = {
@@ -711,7 +711,7 @@ describe('PUT /api/databases/:databaseId/fields/:fieldId', () => {
                 const response = await updateFieldById(testDatabase.id, fieldId, token, updatedField)
 
                 expect(response.status).toBe(400)
-                expect(response.body.error).toBe('Field type must be text, number, boolean, or date')
+                expect(response.body.errors).toContain('Field type must be text, number, boolean, or date')
             })
             test('fails with 400 if user inputs non-boolean in required', async () => {
                 const updatedField = {
@@ -723,7 +723,7 @@ describe('PUT /api/databases/:databaseId/fields/:fieldId', () => {
                 const response = await updateFieldById(testDatabase.id, fieldId, token, updatedField)
 
                 expect(response.status).toBe(400)
-                expect(response.body.error).toBe('Required must be either true or false')
+                expect(response.body.errors).toContain('Required must be either true or false')
             })
         })
         describe('when the requested resources are not found', () => {

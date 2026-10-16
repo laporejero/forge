@@ -7,7 +7,7 @@ const validateBody = (schema: ZodType) => {
 
         if (!result.success) {
             return res.status(400).json({
-                error: result.error.issues[0].message
+                errors: result.error.issues.map(issue => issue.message)
             })
         }
 

@@ -118,9 +118,7 @@ describe('POST /api/login', () => {
             .expect(400)
             .expect('Content-Type', /application\/json/)
 
-        expect(response.body.error).toBe(
-            'Email is required'
-        )
+        expect(response.body.errors).toContain('Email is required')
     })
     test('fails with 400 if email is empty', async () => {
         const credentials = {
@@ -134,9 +132,7 @@ describe('POST /api/login', () => {
             .expect(400)
             .expect('Content-Type', /application\/json/)
 
-        expect(response.body.error).toBe(
-            'Email is required'
-        )
+        expect(response.body.errors).toContain('Email is required')
     })
     test('fails with 400 if email contains only whitespace', async () => {
         const credentials = {
@@ -150,9 +146,7 @@ describe('POST /api/login', () => {
             .expect(400)
             .expect('Content-Type', /application\/json/)
 
-        expect(response.body.error).toBe(
-            'Email is required'
-        )
+        expect(response.body.errors).toContain('Email is required')
     })
     test('fails with 400 if email is invalid type', async () => {
         const credentials = {
@@ -166,9 +160,7 @@ describe('POST /api/login', () => {
             .expect(400)
             .expect('Content-Type', /application\/json/)
 
-        expect(response.body.error).toBe(
-            'Invalid email'
-        )
+        expect(response.body.errors).toContain('Invalid email')
     })
     test('fails with 400 if email is invalid format', async () => {
         const credentials = {
@@ -182,9 +174,7 @@ describe('POST /api/login', () => {
             .expect(400)
             .expect('Content-Type', /application\/json/)
 
-        expect(response.body.error).toBe(
-            'Must be a valid email address'
-        )
+        expect(response.body.errors).toContain('Must be a valid email address')
     })
     test('fails with 400 if password is missing', async () => {
         const credentials = {
@@ -197,9 +187,7 @@ describe('POST /api/login', () => {
             .expect(400)
             .expect('Content-Type', /application\/json/)
 
-        expect(response.body.error).toBe(
-            'Password is required'
-        )
+        expect(response.body.errors).toContain('Password is required')
     })
     test('fails with 400 if password is empty', async () => {
         const credentials = {
@@ -213,9 +201,7 @@ describe('POST /api/login', () => {
             .expect(400)
             .expect('Content-Type', /application\/json/)
 
-        expect(response.body.error).toBe(
-            'Password is required'
-        )
+        expect(response.body.errors).toContain('Password is required')
     })
     test('fails with 400 if password is invalid type', async () => {
         const credentials = {
@@ -229,9 +215,7 @@ describe('POST /api/login', () => {
             .expect(400)
             .expect('Content-Type', /application\/json/)
 
-        expect(response.body.error).toBe(
-            'Invalid password'
-        )
+        expect(response.body.errors).toContain('Invalid password')
     })
     test('trim and lowercases email', async () => {
         const credentials = {

@@ -73,7 +73,7 @@ describe('POST /api/users', () => {
             .expect(400)
             .expect('Content-Type', /application\/json/)
 
-        expect(response.body.error).toBe(
+        expect(response.body.errors).toContain(
             'Must be a valid email address'
         )
     })
@@ -86,7 +86,7 @@ describe('POST /api/users', () => {
             })
             .expect(400)
 
-        expect(response.body.error).toBe('Email is required')
+        expect(response.body.errors).toContain('Email is required')
     })
     test('fails with 400 if email is empty', async () => {
         const user = {
@@ -101,7 +101,7 @@ describe('POST /api/users', () => {
             .expect(400)
             .expect('Content-Type', /application\/json/)
 
-        expect(response.body.error).toBe(
+        expect(response.body.errors).toContain(
             'Email is required'
         )
     })
@@ -115,7 +115,7 @@ describe('POST /api/users', () => {
             })
             .expect(400)
 
-        expect(response.body.error).toBe('Invalid email')
+        expect(response.body.errors).toContain('Invalid email')
     })
     test('fails with 400 if email contains only whitespace', async () => {
         const response = await api
@@ -127,7 +127,7 @@ describe('POST /api/users', () => {
             })
             .expect(400)
 
-        expect(response.body.error).toBe('Email is required')
+        expect(response.body.errors).toContain('Email is required')
     })
     test('fails with 400 if name is empty', async () => {
         const user = {
@@ -142,7 +142,7 @@ describe('POST /api/users', () => {
             .expect(400)
             .expect('Content-Type', /application\/json/)
 
-        expect(response.body.error).toBe(
+        expect(response.body.errors).toContain(
             'Name is required'
         )
     })
@@ -159,7 +159,7 @@ describe('POST /api/users', () => {
             .expect(400)
             .expect('Content-Type', /application\/json/)
 
-        expect(response.body.error).toBe(
+        expect(response.body.errors).toContain(
             'Name must be between 2 and 30 characters'
         )
     })
@@ -173,7 +173,7 @@ describe('POST /api/users', () => {
             })
             .expect(400)
 
-        expect(response.body.error).toBe(
+        expect(response.body.errors).toContain(
             'Name must be between 2 and 30 characters'
         )
     })
@@ -186,7 +186,7 @@ describe('POST /api/users', () => {
             })
             .expect(400)
 
-        expect(response.body.error).toBe('Name is required')
+        expect(response.body.errors).toContain('Name is required')
     })
     test('fails with 400 if name is invalid type', async () => {
         const response = await api
@@ -198,7 +198,7 @@ describe('POST /api/users', () => {
             })
             .expect(400)
 
-        expect(response.body.error).toBe('Invalid name')
+        expect(response.body.errors).toContain('Invalid name')
     })
     test('fails with 400 if name contains only whitespace', async () => {
         const response = await api
@@ -210,7 +210,7 @@ describe('POST /api/users', () => {
             })
             .expect(400)
 
-        expect(response.body.error).toBe('Name is required')
+        expect(response.body.errors).toContain('Name is required')
     })
     test('fails with 400 if password is too short', async () => {
         const user = {
@@ -225,7 +225,7 @@ describe('POST /api/users', () => {
             .expect(400)
             .expect('Content-Type', /application\/json/)
 
-        expect(response.body.error).toBe(
+        expect(response.body.errors).toContain(
             'Password must be at least 8 characters'
         )
     })
@@ -238,7 +238,7 @@ describe('POST /api/users', () => {
             })
             .expect(400)
 
-        expect(response.body.error).toBe('Password is required')
+        expect(response.body.errors).toContain('Password is required')
     })
     test('fails with 400 if password is invalid type', async () => {
         const response = await api
@@ -250,7 +250,7 @@ describe('POST /api/users', () => {
             })
             .expect(400)
 
-        expect(response.body.error).toBe('Invalid password')
+        expect(response.body.errors).toContain('Invalid password')
     })
     test('fails with 400 if password is empty', async () => {
         const response = await api
@@ -262,7 +262,7 @@ describe('POST /api/users', () => {
             })
             .expect(400)
 
-        expect(response.body.error).toBe('Password is required')
+        expect(response.body.errors).toContain('Password is required')
     })
     test('trims name and email', async () => {
         const newUser = {

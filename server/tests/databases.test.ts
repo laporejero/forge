@@ -68,21 +68,21 @@ describe('POST /api/databases', () => {
             .expect(400)
             .expect('Content-Type', /application\/json/)
 
-        expect(response.body.error).toBe('Database name is required')
+        expect(response.body.errors).toContain('Database name is required')
     })
     test('fails with 400 if name if empty', async () => {
         const response = await postDatabase(token, '')
 
         expect(response.status).toBe(400)
         expect(response.headers['content-type']).toMatch(/application\/json/)
-        expect(response.body.error).toBe('Database name is required')
+        expect(response.body.errors).toContain('Database name is required')
     })
     test('fails with 400 if name contains whitespace only', async () => {    
         const response = await postDatabase(token, '   ')
         
         expect(response.status).toBe(400)
         expect(response.headers['content-type']).toMatch(/application\/json/)
-        expect(response.body.error).toBe('Database name is required')
+        expect(response.body.errors).toContain('Database name is required')
     })
     test('fails with 400 if name is invalid type', async () => {
         const response = await api
@@ -92,14 +92,14 @@ describe('POST /api/databases', () => {
             .expect(400)
             .expect('Content-Type', /application\/json/)
 
-        expect(response.body.error).toBe('Invalid database name')
+        expect(response.body.errors).toContain('Invalid database name')
     })
     test('fails with 400 if name is longer than 30 characters', async () => {
         const response = await postDatabase(token, 'A'.repeat(31))
 
         expect(response.status).toBe(400)
         expect(response.headers['content-type']).toMatch(/application\/json/)
-        expect(response.body.error).toBe('Database name must be 30 characters or less')
+        expect(response.body.errors).toContain('Database name must be 30 characters or less')
     })
     test('trim database name before saving', async () => {
         const response = await postDatabase(token, '  My Database  ')
@@ -286,7 +286,7 @@ describe('PUT /api/databases/:id', () => {
             .expect(400)
             .expect('Content-Type', /application\/json/)
 
-        expect(response.body.error).toBe('Invalid database name')
+        expect(response.body.errors).toContain('Invalid database name')
     })
     test('fails with 400 if owner updates database with an empty name', async () => {
         const createdDatabase = await postDatabase(token, 'My Database')
@@ -296,7 +296,7 @@ describe('PUT /api/databases/:id', () => {
 
         expect(response.status).toBe(400)
         expect(response.headers['content-type']).toMatch(/application\/json/)
-        expect(response.body.error).toBe('Database name is required')
+        expect(response.body.errors).toContain('Database name is required')
     })
     test('fails with 400 if owner updates database name with whitespace only', async () => {
         const createdDatabase = await postDatabase(token, 'My Database')
@@ -306,7 +306,7 @@ describe('PUT /api/databases/:id', () => {
 
         expect(response.status).toBe(400)
         expect(response.headers['content-type']).toMatch(/application\/json/)
-        expect(response.body.error).toBe('Database name is required')
+        expect(response.body.errors).toContain('Database name is required')
     })
     test('fails with 400 if owner updates database name invalid ID', async () => {
         await postDatabase(token, 'My Database')
