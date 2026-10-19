@@ -10,7 +10,9 @@ export const sortQuerySchema = z.object({
         .trim()
         .min(1, { error: 'Invalid field' }),
 
-    sortOrder: z.enum(['asc', 'desc']).default('asc')
+    sortOrder: z.enum(['asc', 'desc'], {
+        error: 'Sort order must be either asc or desc'
+    }).default('asc')
 })
 
 export type SortQuery = z.infer<typeof sortQuerySchema>

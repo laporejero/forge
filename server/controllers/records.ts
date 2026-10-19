@@ -79,7 +79,10 @@ router.get('/',
     const { page, limit } = paginationResult.data
     const offset = (page - 1) * limit
 
-    if (req.query.sortField !== undefined) {
+    if (
+        req.query.sortField !== undefined ||
+        req.query.sortOrder !== undefined
+    ) {
         const result = sortQuerySchema.safeParse({
             sortField: req.query.sortField,
             sortOrder: req.query.sortOrder
@@ -87,7 +90,9 @@ router.get('/',
 
         if (!result.success) {
             return res.status(400).json({
-                error: 'Invalid sort query'
+                errors: result.error.issues.map(
+                    issue => issue.message
+                )
             })
         }
 
@@ -125,7 +130,9 @@ router.get('/',
     
         if (!result.success) {
             return res.status(400).json({
-                error: 'Invalid filter query'
+                errors: result.error.issues.map(
+                    issue => issue.message
+                )
             })
         }
 
