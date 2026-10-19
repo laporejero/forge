@@ -422,7 +422,7 @@ describe('GET /api/databases/:databaseId/records', () => {
                 })
 
             expect(response.status).toBe(400)
-            expect(response.body.error).toBe("Invalid filter query")
+            expect(response.body.errors).toContain("Invalid operator")
         })
         test('fails with 404 if field ID is unknown', async () => {
             const response = await api
@@ -588,6 +588,85 @@ describe('GET /api/databases/:databaseId/records', () => {
                 limit: 20,
                 total: 3,
                 totalPages: 1
+            })
+        })
+        test('returns the correct records for page 2', async () => {
+            const response = await api
+                .get(`/api/databases/${testDatabase.id}/records`)
+                .set('Authorization', `Bearer ${token}`)
+                .query({ page: '2', limit: '2' })
+
+            expect(response.status).toBe(200)
+            expect(response.body.data).toHaveLength(1)
+
+            expect(response.body.pagination).toEqual({
+                page: 2,
+                limit: 2,
+                total: 3,
+                totalPages: 2
+            })
+
+            expect(response.body.data[0].data[String(nameField.id)]).toBe('Joey')
+        })
+        test('returns an empty array when page exceeds available records', async () => {
+            const response = await api
+                .get(`/api/databases/${testDatabase.id}/records`)
+                .set('Authorization', `Bearer ${token}`)
+                .query({ page: '5', limit: '2' })
+
+            expect(response.status).toBe(200)
+            expect(response.body.data).toEqual([])
+
+            expect(response.body.pagination).toEqual({
+                page: 5,
+                limit: 2,
+                total: 3,
+                totalPages: 2
+            })
+        })
+        test.each([
+            [{ page: '0' }],
+            [{ page: '-1' }],
+            [{ page: '1.5' }],
+            [{ page: 'abc' }],
+            [{ limit: '0' }],
+            [{ limit: '101' }],
+            [{ limit: 'abc' }]
+        ])('rejects invalid pagination parameters: %j', async (query) => {
+            const response = await api
+                .get(`/api/databases/${testDatabase.id}/records`)
+                .set('Authorization', `Bearer ${token}`)
+                .query(query)
+
+            expect(response.status).toBe(400)
+            expect(response.body.errors).toBeInstanceOf(Array)
+            expect(response.body.errors.length).toBeGreaterThan(0)
+        })
+        test('supports pagination with filtering and sorting', async () => {
+            const response = await api
+                .get(`/api/databases/${testDatabase.id}/records`)
+                .set('Authorization', `Bearer ${token}`)
+                .query({
+                    field: String(ageField.id),
+                    operator: 'gte',
+                    value: '21',
+                    sortField: String(ageField.id),
+                    sortOrder: 'desc',
+                    page: '2',
+                    limit: '1'
+                })
+
+            expect(response.status).toBe(200)
+            expect(response.body.data).toHaveLength(1)
+
+            expect(response.body.data[0].data[String(nameField.id)])
+                .toBe('Bob')
+
+            expect(response.body.pagination).toEqual({
+                page: 2,
+                limit: 1,
+                total: 2,
+                totalPages: 2
             })
         })
     })
