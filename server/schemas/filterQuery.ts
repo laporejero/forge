@@ -10,7 +10,9 @@ export const filterQuerySchema = z.object({
         .trim()
         .min(1, { error: 'Invalid field' }),
     
-    operator: z.enum(['eq', 'gt', 'gte', 'lt', 'lte', 'contains']),
+    operator: z.enum(['eq', 'gt', 'gte', 'lt', 'lte', 'contains'], {
+        error: 'Invalid operator'
+    }),
     
     value: z.string({
         error: (issue) =>
