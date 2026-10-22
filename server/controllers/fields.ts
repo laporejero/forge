@@ -1,11 +1,13 @@
 import { Router, Request, Response } from 'express'
-import { Field, Database } from '../models'
+import { Field, Record } from '../models'
 import tokenExtractor from '../middleware/tokenExtractor'
 import validateBody from '../middleware/validateBody'
 import requireDatabaseOwnership from '../middleware/requireDatabaseOwnership'
 import { fieldSchema, FieldInput } from '../schemas/field'
 import { Op } from 'sequelize'
 import requireField from '../middleware/requireField'
+import { convertFieldValue } from '../util/fieldConversion'
+import { sequelize } from '../util/db'
 
 const router = Router({ mergeParams: true })
 
@@ -84,6 +86,7 @@ router.put('/:fieldId',
     const field = req.field!
 
     const { name, type, required } = req.body
+    const typeChanged = field.type !== type
 
     const existingField = await Field.findOne({
         where: { 
@@ -99,11 +102,76 @@ router.put('/:fieldId',
         })
     }
 
-    field.name = name
-    field.type = type
-    field.required = required
+    const needsRecordCheck = typeChanged || (!field.required && required)
 
-    await field.save()
+    const records = needsRecordCheck 
+        ? await Record.findAll({ where: { databaseId } })
+        : []
+
+    if (!field.required && required) {
+        const fieldId = String(field.id)
+
+        for (const record of records) {
+            const value = record.data[fieldId]
+
+            if (
+                !Object.prototype.hasOwnProperty.call(record.data, fieldId) || 
+                value === null
+            ) {
+                return res.status(400).json({
+                    error: 'Cannot make field required: existing records have missing values'
+                })
+            }
+        }
+    }
+
+    const conversions: { record: Record; value: string | number | boolean }[] = []
+
+    if (typeChanged) {
+        const fieldId = String(field.id)
+
+        for (const record of records) {
+            if (!Object.prototype.hasOwnProperty.call(record.data, fieldId)) {
+                continue
+            }
+
+            const value = record.data[fieldId]
+
+            if (value === null) {
+                continue
+            }
+
+            const result = convertFieldValue(value, field.type, type)
+
+            if (!result.success) {
+                return res.status(400).json({
+                    error: result.error
+                })
+            }
+
+            conversions.push({ record, value: result.value })
+        }
+    }
+
+    await sequelize.transaction(async (transaction) => {
+        for (const { record, value } of conversions) {
+            const updatedData = {
+                ...record.data,
+                [String(field.id)]: value
+            }
+
+            await record.update(
+                { data: updatedData },
+                { transaction }
+            )
+        }
+
+        field.name = name
+        field.type = type
+        field.required = required
+
+        await field.save({ transaction })
+    })
 
     return res.status(200).json(field)
 })

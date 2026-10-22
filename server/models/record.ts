@@ -4,7 +4,7 @@ import { sequelize } from '../util/db'
 class Record extends Model {
     declare id: number
     declare databaseId: number
-    declare data: object
+    declare data: { [key: string]: unknown }
 }
 
 Record.init({
