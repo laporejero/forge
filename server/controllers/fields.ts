@@ -185,8 +185,31 @@ router.delete('/:fieldId',
         res: Response
     ) => {
     const field = req.field!
+    const databaseId = req.database!.id
+    const fieldId = String(field.id)
 
-    await field.destroy()
+    const records = await Record.findAll({
+        where: { databaseId }
+    })
+
+    await sequelize.transaction(async (transaction) => {
+        for (const record of records) {
+            if (!Object.prototype.hasOwnProperty.call(record.data, fieldId)) {
+                continue
+            }
+
+            const updatedData = { ...record.data }
+
+            delete updatedData[fieldId]
+
+            await record.update(
+                { data: updatedData },
+                { transaction }
+            )
+        }
+
+        await field.destroy({ transaction })
+    })
 
     return res.status(204).end()
 })
