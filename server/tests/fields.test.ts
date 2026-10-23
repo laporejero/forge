@@ -3,7 +3,7 @@ import { beforeEach, describe, test, expect, beforeAll, afterAll } from 'vitest'
 import bcrypt from 'bcrypt'
 
 import app from '../app'
-import { User, Database, Field } from '../models'
+import { User, Database, Field, Record } from '../models'
 import { connectToDatabase, sequelize } from '../util/db'
 import { clearTestDatabase, deleteField, getFieldById, getFields, postField, updateFieldById } from './testHelpers'
 
@@ -616,6 +616,265 @@ describe('PUT /api/databases/:databaseId/fields/:fieldId', () => {
             expect(response.body.name).toBe('Email')
             expect(response.body.required).toBe(true)
         })
+        test('renaming a field preserves existing record data', async () => {
+            const record = await Record.create({
+                databaseId: testDatabase.id,
+                data: { [String(fieldId)]: 'Bob' }
+            })
+
+            const response = await updateFieldById(testDatabase.id, fieldId, token, {
+                name: 'Full Name',
+                type: 'text',
+                required: true
+            })
+
+            expect(response.status).toBe(200)
+            expect(response.body.id).toBe(fieldId)
+            expect(response.body.name).toBe('Full Name')
+
+            const updatedRecord = await Record.findByPk(record.id)
+
+            expect(updatedRecord).not.toBeNull()
+            expect(updatedRecord!.data[String(fieldId)]).toBe('Bob')
+        })
+        test('converts existing record values from text to number', async () => {
+            const record = await Record.create({
+                databaseId: testDatabase.id,
+                data: {
+                    [String(fieldId)]: '25'
+                }
+            })
+
+            const response = await updateFieldById(testDatabase.id, fieldId, token, {
+                name: 'Name',
+                type: 'number',
+                required: true
+            })
+
+            expect(response.status).toBe(200)
+            expect(response.body.type).toBe('number')
+
+            const updatedRecord = await Record.findByPk(record.id)
+
+            expect(updatedRecord).not.toBeNull()
+            expect(updatedRecord!.data[String(fieldId)]).toBe(25)
+        })
+        test('rejects incompatible type conversion without modifying data', async () => {
+            const record = await Record.create({
+                databaseId: testDatabase.id,
+                data: {
+                    [String(fieldId)]: 'Bob'
+                }
+            })
+
+            const response = await updateFieldById(testDatabase.id, fieldId, token, {
+                name: 'Name',
+                type: 'number',
+                required: true
+            })
+
+            expect(response.status).toBe(400)
+            expect(response.body.error).toBe('Cannot convert value to number')
+
+            const unchangedField = await Field.findByPk(fieldId)
+            const unchangedRecord = await Record.findByPk(record.id)
+
+            expect(unchangedField!.type).toBe('text')
+            expect(unchangedRecord!.data[String(fieldId)]).toBe('Bob')
+        })
+        test('converts existing record values from number to text', async () => {
+            const record = await Record.create({
+                databaseId: testDatabase.id,
+                data: {
+                    [String(fieldId)]: 25
+                }
+            })
+
+            await Field.update(
+                { type: 'number' },
+                { where: { id: fieldId } }
+            )
+
+            const response = await updateFieldById(testDatabase.id, fieldId, token, {
+                name: 'Name',
+                type: 'text',
+                required: true
+            })
+
+            expect(response.status).toBe(200)
+            expect(response.body.type).toBe('text')
+
+            const updatedRecord = await Record.findByPk(record.id)
+
+            expect(updatedRecord!.data[String(fieldId)]).toBe('25')
+        })
+        test('rejects making a field required when an existing record is missing its value', async () => {
+            // Make the existing field optional
+            await Field.update(
+                { required: false },
+                { where: { id: fieldId } }
+            )
+
+            // Create a record without this field
+            const record = await Record.create({
+                databaseId: testDatabase.id,
+                data: {}
+            })
+
+            const response = await updateFieldById(testDatabase.id, fieldId, token, {
+                name: 'Name',
+                type: 'text',
+                required: true
+            })
+
+            expect(response.status).toBe(400)
+            expect(response.body.error).toBe(
+                'Cannot make field required: existing records have missing values'
+            )
+
+            // Verify the field remains optional
+            const unchangedField = await Field.findByPk(fieldId)
+            expect(unchangedField!.required).toBe(false)
+
+            // Verify the record remains unchanged
+            const unchangedRecord = await Record.findByPk(record.id)
+            expect(unchangedRecord!.data).toEqual({})
+        })
+        test('allows making a field required when all records have values', async () => {
+            await Field.update(
+                { required: false },
+                { where: { id: fieldId } }
+            )
+
+            const record1 = await Record.create({
+                databaseId: testDatabase.id,
+                data: { [String(fieldId)]: 'Alice' }
+            })
+
+            const record2 = await Record.create({
+                databaseId: testDatabase.id,
+                data: { [String(fieldId)]: 'Bob' }
+            })
+
+            const response = await updateFieldById(testDatabase.id, fieldId, token, {
+                name: 'Name',
+                type: 'text',
+                required: true
+            })
+
+            expect(response.status).toBe(200)
+            expect(response.body.required).toBe(true)
+
+            const updatedField  = await Field.findByPk(fieldId)
+            expect(updatedField!.required).toBe(true)
+
+            // Verify existing record values remain unchanged
+            const updatedRecord1 = await Record.findByPk(record1.id)
+            const updatedRecord2 = await Record.findByPk(record2.id)
+
+            expect(updatedRecord1!.data[String(fieldId)]).toBe('Alice')
+            expect(updatedRecord2!.data[String(fieldId)]).toBe('Bob')
+        })
+        test('allows changing a required field to optional without modifying records', async () => {
+            const record1 = await Record.create({
+                databaseId: testDatabase.id,
+                data: {
+                    [String(fieldId)]: 'Alice'
+                }
+            })
+
+            const record2 = await Record.create({
+                databaseId: testDatabase.id,
+                data: {
+                    [String(fieldId)]: 'Bob'
+                }
+            })
+
+            const response = await updateFieldById(testDatabase.id, fieldId, token, {
+                name: 'Name',
+                type: 'text',
+                required: false
+            })
+
+            expect(response.status).toBe(200)
+            expect(response.body.required).toBe(false)
+
+            // Verify the change was persisted
+            const updatedField = await Field.findByPk(fieldId)
+            expect(updatedField!.required).toBe(false)
+
+            // Verify existing records remain unchanged
+            const updatedRecord1 = await Record.findByPk(record1.id)
+            const updatedRecord2 = await Record.findByPk(record2.id)
+
+            expect(updatedRecord1!.data).toEqual({
+                [String(fieldId)]: 'Alice'
+            })
+
+            expect(updatedRecord2!.data).toEqual({
+                [String(fieldId)]: 'Bob'
+            })
+        })
+        test('allows changing field type when existing records have no value', async () => {
+            const record = await Record.create({
+                databaseId: testDatabase.id,
+                data: {}
+            })
+
+            const response = await updateFieldById(
+                testDatabase.id,
+                fieldId,
+                token,
+                {
+                    name: 'Name',
+                    type: 'date',
+                    required: true
+                }
+            )
+
+            expect(response.status).toBe(200)
+            expect(response.body.type).toBe('date')
+
+            const updatedField = await Field.findByPk(fieldId)
+            expect(updatedField!.type).toBe('date')
+
+            const updatedRecord = await Record.findByPk(record.id)
+            expect(updatedRecord!.data).toEqual({})
+        })
+        test('rejects unsupported type conversion when existing values are present', async () => {
+            // The beforeEach creates a text Field.
+            // Change its initial type to boolean.
+            await Field.update(
+                { type: 'boolean' },
+                { where: { id: fieldId } }
+            )
+
+            const record = await Record.create({
+                databaseId: testDatabase.id,
+                data: {
+                    [String(fieldId)]: true
+                }
+            })
+
+            const response = await updateFieldById(
+                testDatabase.id,
+                fieldId,
+                token,
+                {
+                    name: 'Name',
+                    type: 'date',
+                    required: true
+                }
+            )
+
+            expect(response.status).toBe(400)
+
+            const unchangedField = await Field.findByPk(fieldId)
+            const unchangedRecord = await Record.findByPk(record.id)
+
+            expect(unchangedField!.type).toBe('boolean')
+            expect(unchangedRecord!.data[String(fieldId)]).toBe(true)
+        })
         describe('when authentication is invalid', () => {
             test('fails with 401 if user is without authentication', async () => {
                 const updatedField = {
@@ -896,5 +1155,67 @@ describe('DELETE /api/databases/:databaseId/fields/:fieldId', () => {
 
         expect(response.status).toBe(404)
         expect(response.body.error).toBe('Field not found')
+    })
+    test('deletes a field and removes its values from existing records', async () => {
+        const otherField = await Field.create({
+            name: 'Age',
+            type: 'number',
+            required: false,
+            databaseId: testDatabase.id
+        })
+
+        const record1 = await Record.create({
+            databaseId: testDatabase.id,
+            data: {
+                [String(fieldId)]: 'Alice',
+                [String(otherField.id)]: 25
+            }
+        })
+
+        const record2 = await Record.create({
+            databaseId: testDatabase.id,
+            data: {
+                [String(fieldId)]: 'Bob',
+                [String(otherField.id)]: 30
+            }
+        })
+
+        const response = await api
+            .delete(`/api/databases/${testDatabase.id}/fields/${fieldId}`)
+            .set('Authorization', `Bearer ${token}`)
+
+        expect(response.status).toBe(204)
+
+        const deletedField = await Field.findByPk(fieldId)
+        expect(deletedField).toBeNull()
+
+        const updatedRecord1 = await Record.findByPk(record1.id)
+        const updatedRecord2 = await Record.findByPk(record2.id)
+
+        expect(updatedRecord1!.data).toEqual({
+            [String(otherField.id)]: 25
+        })
+
+        expect(updatedRecord2!.data).toEqual({
+            [String(otherField.id)]: 30
+        })
+    })
+    test('deletes a field when records do not contain its value', async () => {
+        const record = await Record.create({
+            databaseId: testDatabase.id,
+            data: {}
+        })
+
+        const response = await api
+            .delete(`/api/databases/${testDatabase.id}/fields/${fieldId}`)
+            .set('Authorization', `Bearer ${token}`)
+
+        expect(response.status).toBe(204)
+
+        const deletedField = await Field.findByPk(fieldId)
+        expect(deletedField).toBeNull()
+
+        const unchangedRecord = await Record.findByPk(record.id)
+        expect(unchangedRecord!.data).toEqual({})
     })
 })
