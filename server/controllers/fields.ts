@@ -33,6 +33,18 @@ router.post('/',
         })
     }
 
+    if (required) {
+        const recordCount = await Record.count({
+            where: { databaseId }
+        })
+
+        if (recordCount > 0) {
+            return res.status(400).json({
+                error: 'Cannot create a required field when records already exist'
+            })
+        }
+    }
+
     const field = await Field.create({
         name,
         type,

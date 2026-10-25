@@ -276,6 +276,64 @@ describe('POST /api/databases/:databaseId/fields', () => {
 
         expect(firstResponse.body.id).not.toBe(secondResponse.body.id)
     })
+    test('fails with 400 if user creates a required field when records already exist', async () => {
+        await Record.create({
+            databaseId: testDatabase.id,
+            data: {}
+        })
+
+        const response = await postField(testDatabase.id, token, {
+            name: 'Age',
+            type: 'number',
+            required: true
+        })
+
+        expect(response.status).toBe(400)
+        expect(response.body.error).toBe(
+            'Cannot create a required field when records already exist'
+        )
+
+        const field = await Field.findOne({
+            where: { name: 'Age', databaseId: testDatabase.id }
+        })
+
+        expect(field).toBeNull()
+    })
+    test('allows creating an optional field when records already exist', async () => {
+        const record = await Record.create({
+            databaseId: testDatabase.id,
+            data: {}
+        })
+
+        const response = await postField(testDatabase.id, token, {
+            name: 'Age',
+            type: 'number',
+            required: false
+        })
+
+        expect(response.status).toBe(201)
+        expect(response.body.required).toBe(false)
+
+        const unchangedRecord = await Record.findByPk(record.id)
+        expect(unchangedRecord!.data).toEqual({})
+    })
+    test('defaults required to false when records already exist', async () => {
+        await Record.create({
+            databaseId: testDatabase.id,
+            data: {}
+        })
+
+        const response = await postField(testDatabase.id, token, {
+            name: 'Age',
+            type: 'number'
+        })
+
+        expect(response.status).toBe(201)
+        expect(response.body.required).toBe(false)
+
+        const createdField = await Field.findByPk(response.body.id)
+        expect(createdField!.required).toBe(false)
+    })
 })
 describe('GET /api/databases/:databaseId/fields', () => {
     describe('when database has fields', () => {
