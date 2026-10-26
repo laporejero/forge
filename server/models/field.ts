@@ -8,6 +8,8 @@ class Field extends Model {
     declare name: string
     declare type: FieldType
     declare required: boolean
+    declare targetDatabaseId: number | null
+    declare inverseFieldId: number | null
 }
 
 Field.init({
@@ -34,6 +36,18 @@ Field.init({
         type: DataTypes.BOOLEAN,
         allowNull: false,
         defaultValue: false
+    },
+    targetDatabaseId: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        references: { model: 'databases', key: 'id' },
+        onDelete: 'RESTRICT'
+    },
+    inverseFieldId: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        references: { model: 'fields', key: 'id' },
+        onDelete: 'SET NULL'
     }
 }, {
     sequelize,

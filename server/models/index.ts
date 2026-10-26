@@ -3,6 +3,7 @@ import Database from './database'
 import Field from './field'
 import Record from './record'
 import Session from './session'
+import RecordLink from './recordLink'
 
 User.hasMany(Database)
 Database.belongsTo(User)
@@ -26,4 +27,32 @@ Record.belongsTo(Database, {
     foreignKey: 'databaseId'
 })
 
-export { User, Database, Field, Record, Session }
+Field.hasMany(RecordLink, {
+    foreignKey: 'fieldId',
+    onDelete: 'CASCADE'
+})
+RecordLink.belongsTo(Field, {
+    foreignKey: 'fieldId'
+})
+
+Record.hasMany(RecordLink, {
+    foreignKey: 'sourceRecordId',
+    as: 'outgoingLinks',
+    onDelete: 'CASCADE'
+})
+RecordLink.belongsTo(Record, {
+    foreignKey: 'sourceRecordId',
+    as: 'sourceRecord'
+})
+
+Record.hasMany(RecordLink, {
+    foreignKey: 'targetRecordId',
+    as: 'incomingLinks',
+    onDelete: 'CASCADE'
+})
+RecordLink.belongsTo(Record, {
+    foreignKey: 'targetRecordId',
+    as: 'targetRecord'
+})
+
+export { User, Database, Field, Record, Session, RecordLink }
