@@ -25,3 +25,33 @@ export const fieldSchema = z.object({
 
 export type FieldInput = z.infer<typeof fieldSchema>
 export type FieldType = z.infer<typeof fieldSchema>['type']
+
+export const relationFieldSchema = z.object({
+    name: z.string({
+            error: (issue) =>
+                issue.input === undefined || issue.input === null
+                    ? 'Field name is required'
+                    : 'Invalid field name'
+        })
+        .trim()
+        .min(1, { error: 'Field name is required' })
+        .max(30, { error: 'Field name must be 30 characters or less' }),
+
+    type: z.literal('relation'),
+
+    targetDatabaseId: z.number().int().positive(),
+
+    inverseName: z.string({
+            error: (issue) =>
+                issue.input === undefined || issue.input === null
+                    ? 'Field name is required'
+                    : 'Invalid field name'
+        })
+        .trim()
+        .min(1, { error: 'Field name is required' })
+        .max(30, { error: 'Field name must be 30 characters or less' }),
+
+    required: z.literal(false).default(false)
+})
+
+export type RelationFieldInput = z.infer<typeof relationFieldSchema>
