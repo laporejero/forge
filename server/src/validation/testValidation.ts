@@ -1,7 +1,9 @@
-import { Field, FieldType } from '../../types/types' 
+import { FieldType } from '../../types/types'
+
+type Field = { name: string; type: FieldType }
 
 const fields: Field[] = [
-  { name: 'Name', type: 'string' },
+  { name: 'Name', type: 'text' },
   { name: 'Age', type: 'number' },
   { name: 'Active', type: 'boolean' }
 ]
