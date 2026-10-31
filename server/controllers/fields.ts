@@ -1,9 +1,9 @@
 import { Router, Request, Response } from 'express'
-import { Field, Record } from '../models'
+import { Database, Field, Record } from '../models'
 import tokenExtractor from '../middleware/tokenExtractor'
 import validateBody from '../middleware/validateBody'
 import requireDatabaseOwnership from '../middleware/requireDatabaseOwnership'
-import { fieldSchema, FieldInput } from '../schemas/field'
+import { fieldSchema, FieldInput, createFieldSchema, CreateFieldInput } from '../schemas/field'
 import { Op } from 'sequelize'
 import requireField from '../middleware/requireField'
 import { convertFieldValue } from '../util/fieldConversion'
@@ -14,9 +14,9 @@ const router = Router({ mergeParams: true })
 router.post('/',
     tokenExtractor,
     requireDatabaseOwnership,
-    validateBody(fieldSchema),
+    validateBody(createFieldSchema),
     async (
-        req: Request<{ databaseId: string }, {}, FieldInput>,
+        req: Request<{ databaseId: string }, {}, CreateFieldInput>,
         res: Response
     ) => {
     const databaseId = req.database!.id
@@ -31,6 +31,69 @@ router.post('/',
         return res.status(409).json({
             error: 'A field with this name already exists'
         })
+    }
+
+    if (type === 'relation') {
+        const { targetDatabaseId, inverseName } = req.body
+
+        const targetDatabase = await Database.findOne({
+            where: { id: targetDatabaseId, userId: req.decodedToken!.id }
+        })
+
+        if (!targetDatabase) {
+            return res.status(404).json({
+                error: 'Database not found'
+            })
+        }
+
+        if (targetDatabase.id === databaseId) {
+            return res.status(400).json({
+                error: 'A database cannot have a relationship with itself'
+            })
+        }
+
+        const existingInverseField = await Field.findOne({
+            where: {
+                name: inverseName,
+                databaseId: targetDatabaseId
+            }
+        })
+
+        if (existingInverseField) {
+            return res.status(409).json({
+                error: 'A field with this name already exists in the target database'
+            })
+        }
+
+        const field = await sequelize.transaction(async (transaction) => {
+        const sourceField = await Field.create({
+            name,
+            type: 'relation',
+            required: false,
+            databaseId,
+            targetDatabaseId
+        }, { transaction })
+
+        const inverseField = await Field.create({
+            name: inverseName,
+            type: 'relation',
+            required: false,
+            databaseId: targetDatabaseId,
+            targetDatabaseId: databaseId
+        }, { transaction })
+
+        await sourceField.update({
+            inverseFieldId: inverseField.id
+        }, { transaction })
+
+        await inverseField.update({
+            inverseFieldId: sourceField.id
+        }, { transaction })
+
+        return sourceField
+    })
+
+    return res.status(201).json(field)
     }
 
     if (required) {

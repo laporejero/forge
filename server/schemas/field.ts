@@ -55,3 +55,10 @@ export const relationFieldSchema = z.object({
 })
 
 export type RelationFieldInput = z.infer<typeof relationFieldSchema>
+
+export const createFieldSchema = z.discriminatedUnion('type', [
+    fieldSchema,
+    relationFieldSchema
+])
+
+export type CreateFieldInput = z.infer<typeof createFieldSchema>
