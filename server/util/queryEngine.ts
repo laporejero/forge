@@ -41,6 +41,10 @@ export const buildJsonExpression = (field: Field) => {
 }
 
 export const buildTypedExpression = (field: Field) => {
+    if (field.type === 'relation') {
+        throw new Error('Relationship fields are not supported by the query engine')
+    }
+
     const jsonExpression = buildJsonExpression(field)
 
     return cast(
@@ -87,6 +91,10 @@ export const isOperatorAllowed = (
     query: FilterQuery, 
     field: Field
 ) => {
+    if (field.type === 'relation') {
+        throw new Error('Relationship fields are not supported by the query engine')
+    }
+
     return allowedOperators[field.type].includes(query.operator)
 }
 

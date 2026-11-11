@@ -6,7 +6,7 @@ class Field extends Model {
     declare id: number
     declare databaseId: number
     declare name: string
-    declare type: FieldType
+    declare type: FieldType | 'relation'
     declare required: boolean
     declare targetDatabaseId: number | null
     declare inverseFieldId: number | null

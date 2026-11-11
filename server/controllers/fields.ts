@@ -66,34 +66,34 @@ router.post('/',
         }
 
         const field = await sequelize.transaction(async (transaction) => {
-        const sourceField = await Field.create({
-            name,
-            type: 'relation',
-            required: false,
-            databaseId,
-            targetDatabaseId
-        }, { transaction })
+            const sourceField = await Field.create({
+                name,
+                type: 'relation',
+                required: false,
+                databaseId,
+                targetDatabaseId
+            }, { transaction })
 
-        const inverseField = await Field.create({
-            name: inverseName,
-            type: 'relation',
-            required: false,
-            databaseId: targetDatabaseId,
-            targetDatabaseId: databaseId
-        }, { transaction })
+            const inverseField = await Field.create({
+                name: inverseName,
+                type: 'relation',
+                required: false,
+                databaseId: targetDatabaseId,
+                targetDatabaseId: databaseId
+            }, { transaction })
 
-        await sourceField.update({
-            inverseFieldId: inverseField.id
-        }, { transaction })
+            await sourceField.update({
+                inverseFieldId: inverseField.id
+            }, { transaction })
 
-        await inverseField.update({
-            inverseFieldId: sourceField.id
-        }, { transaction })
+            await inverseField.update({
+                inverseFieldId: sourceField.id
+            }, { transaction })
 
-        return sourceField
-    })
+            return sourceField
+        })
 
-    return res.status(201).json(field)
+        return res.status(201).json(field)
     }
 
     if (required) {
@@ -159,6 +159,12 @@ router.put('/:fieldId',
     ) => {
     const databaseId = req.database!.id
     const field = req.field!
+
+    if (field.type === 'relation') {
+        return res.status(400).json({
+            error: 'Relationship fields cannot be modified through this endpoint'
+        })
+    }
 
     const { name, type, required } = req.body
     const typeChanged = field.type !== type

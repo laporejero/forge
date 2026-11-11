@@ -5,6 +5,7 @@ import loginRouter from './controllers/login'
 import databasesRouter from './controllers/databases'
 import fieldsRouter from './controllers/fields'
 import recordsRouter from './controllers/records'
+import recordLinksRouter from './controllers/recordLinks'
 import errorHandler from './middleware/errorHandler'
 import unknownEndpoint from './middleware/unknownEndpoint'
 
@@ -17,6 +18,7 @@ app.use('/api/login', loginRouter)
 app.use('/api/databases', databasesRouter)
 app.use('/api/databases/:databaseId/fields', fieldsRouter)
 app.use('/api/databases/:databaseId/records', recordsRouter)
+app.use('/api/databases/:databaseId/records/:recordId/links/:fieldId', recordLinksRouter)
 
 app.use(unknownEndpoint)
 app.use(errorHandler)
