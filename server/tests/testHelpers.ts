@@ -130,3 +130,10 @@ export const deleteRecord = async (databaseId: number | string, recordId: number
         .delete(`/api/databases/${databaseId}/records/${recordId}`)
         .set('Authorization', `Bearer ${token}`)
 }
+
+export const postRecordLinks = async (databaseId: number | string, recordId: number | string, fieldId: number | string, token: string, targetRecordId: number | string) => {
+    return await api
+        .post(`/api/databases/${databaseId}/records/${recordId}/links/${fieldId}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ targetRecordId })
+}
